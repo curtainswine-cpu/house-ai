@@ -11,3 +11,8 @@ node_modules/
 .env
 .env.local
 dist/
+
+# PRIVATE — never commit personal data (calendar exports, etc.)
+_private/
+*.zip
+*.ics
