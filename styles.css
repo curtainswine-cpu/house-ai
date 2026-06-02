@@ -193,6 +193,41 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .bar__fill--gold { background: var(--gold); box-shadow: 0 0 8px var(--gold-soft); }
 .goal__actions { display: flex; gap: 8px; margin-top: 10px; }
 
+.goal__hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
+
+/* ---------- Rest ("do nothing") day ---------- */
+#restToggle[aria-pressed="true"] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+}
+.rest-banner {
+  background: var(--accent-soft); border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+  color: var(--ink); line-height: 1.4;
+}
+/* On a rest day, soften the routines so they read as optional, not demands */
+.is-rest #todayRoutines { opacity: .55; }
+
+/* ---------- Projects: one next step ---------- */
+.project {
+  margin-bottom: 10px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.project__head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 600; margin-bottom: 10px;
+}
+.project__count { font-family: var(--mono); font-size: .8rem; color: var(--muted); }
+.project__next { display: flex; gap: 12px; align-items: flex-start; }
+.project__nextbody { flex: 1; min-width: 0; }
+.project__label { font-weight: 600; }
+.project__steps {
+  margin: 12px 0 2px; padding-left: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.project__steps li { color: var(--muted); font-size: .92rem; }
+.project__steps li.is-next { color: var(--accent); font-weight: 600; }
+.project__steps li.is-done { text-decoration: line-through; opacity: .7; }
+
 /* ---------- Money: Today card ---------- */
 .money-card {
   margin-top: 18px; display: flex; align-items: center; justify-content: space-between;

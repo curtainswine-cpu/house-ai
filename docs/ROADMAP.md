@@ -13,8 +13,13 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [x] "JARVIS" theme — greets by name, calm arc-reactor HUD
 - [x] Daily goals: **Water** (2 L, tap a glass) + **Steps** (8,000, update from watch)
 - [x] **Fortnightly** routines (for fortnightly bin day) + edit/delete routines
+- [x] **Projects**: blocked chains shown one next-step at a time (e.g. laundry system)
+- [x] **Rest day** toggle (guilt-free do-nothing day) + gentle **Gym** weekly goal
 - [ ] "Well done" streaks / gentle encouragement
+- [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)
+- [ ] Don't surface morning nudges before ~9:30 (Kirsten's preferred wake time)
+- [ ] Add/edit projects in the UI (currently the laundry one is seeded)
 - [ ] Link out to the Meal Planner app (and add a freezer inventory there)
 
 ## 🔜 Phase 2 — Shared between Kirsten & Jack

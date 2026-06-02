@@ -33,6 +33,70 @@ function litres(ml) {
   return (ml / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
+/* ---------- Rest ("do nothing") days ---------- */
+function isRestDay(db, dateKey) {
+  return !!db.restDays[dateKey];
+}
+function toggleRestDay(db, dateKey) {
+  if (db.restDays[dateKey]) delete db.restDays[dateKey];
+  else db.restDays[dateKey] = true;
+  saveDB(db);
+}
+
+/* ---------- Gym (gentle weekly goal) ---------- */
+/* Monday-start week key for a date. */
+function weekStartKey(d) {
+  d = d || new Date();
+  const offset = (d.getDay() + 6) % 7; // 0 = Monday
+  return todayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset));
+}
+function inThisWeek(dateKey) {
+  const start = new Date(weekStartKey() + "T00:00:00");
+  const end = new Date(start); end.setDate(start.getDate() + 7);
+  const d = new Date(dateKey + "T00:00:00");
+  return d >= start && d < end;
+}
+function gymThisWeek(db) {
+  return db.gym.sessions.filter(inThisWeek).length;
+}
+function logGym(db) {
+  const today = todayKey();
+  if (!db.gym.sessions.includes(today)) db.gym.sessions.push(today);
+  saveDB(db);
+}
+function undoGymToday(db) {
+  db.gym.sessions = db.gym.sessions.filter((d) => d !== todayKey());
+  saveDB(db);
+}
+
+function renderTodayGym(db) {
+  const wrap = document.getElementById("todayGym");
+  const count = gymThisWeek(db);
+  const goal = db.gym.perWeek;
+  const loggedToday = db.gym.sessions.includes(todayKey());
+  const hit = count >= goal;
+  const note = count === 0 ? "Ease back in — one session counts."
+    : hit ? "Goal smashed this week. 💪"
+    : "Nice — keep it gentle.";
+  wrap.innerHTML = `
+    <div class="goals">
+      <div class="goals__head">Gym · this week</div>
+      <div class="goal">
+        <div class="goal__row">
+          <span class="goal__name">💪 Sessions ${hit ? "✓" : ""}</span>
+          <span class="goal__val">${count} / ${goal}</span>
+        </div>
+        <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pct(count, goal)}%"></div></div>
+        <div class="goal__hint">${note}</div>
+        <div class="goal__actions">
+          ${loggedToday
+            ? `<button class="btn btn--mini btn--quiet" data-gym-undo>Logged today — undo</button>`
+            : `<button class="btn btn--mini" data-gym>I went to the gym 💪</button>`}
+        </div>
+      </div>
+    </div>`;
+}
+
 /* ---- Render the Today "Daily goals" card ---- */
 function renderTodayGoals(db) {
   const wrap = document.getElementById("todayGoals");

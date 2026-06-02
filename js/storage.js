@@ -46,7 +46,7 @@ function defaultData() {
         assignedTo: "kirsten",
         timeOfDay: "evening",
         repeat: "daily",
-        steps: ["So it's ready for the morning"],
+        steps: ["Pop it on charge (~2 hrs) so it's ready for the morning"],
       },
       {
         id: uid(),
@@ -68,9 +68,28 @@ function defaultData() {
     ],
     completions: {}, // key: "routineId|YYYY-MM-DD" -> true
 
+    // Blocked chains broken into a sequence — only the NEXT step ever shows.
+    projects: [
+      {
+        id: uid(),
+        emoji: "🧺",
+        title: "Sort the laundry system",
+        steps: [
+          { title: "Get more baskets for the unit", done: false },
+          { title: "Organise the drawers with the new baskets", done: false },
+          { title: "Put away the laundry backlog", done: false },
+          { title: "Catch up on the washing", done: false },
+        ],
+      },
+    ],
+
     // Daily health goals + per-day tracking.
     goals: { waterMl: 2000, glassMl: 250, steps: 8000 },
     trackers: {}, // key: "YYYY-MM-DD" -> { waterMl, steps }
+
+    // Gentle, guilt-free extras.
+    gym: { perWeek: 2, sessions: [] }, // sessions = ["YYYY-MM-DD", ...]
+    restDays: {},                      // "YYYY-MM-DD" -> true (a chosen do-nothing day)
 
     // Link to the existing Google-Sheets finance tracker (set up in the Money tab).
     finance: {
@@ -91,6 +110,11 @@ function normalize(db) {
   if (!db.activePerson) db.activePerson = d.activePerson;
   if (!db.completions) db.completions = {};
   if (!db.trackers) db.trackers = {};
+  if (!Array.isArray(db.projects)) db.projects = d.projects;
+  if (!db.restDays) db.restDays = {};
+  if (!db.gym || typeof db.gym !== "object") db.gym = d.gym;
+  if (db.gym.perWeek == null) db.gym.perWeek = d.gym.perWeek;
+  if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
   // Friendly migration of the old seed data

@@ -64,14 +64,28 @@ function render() {
 
   renderPersonToggle();
 
+  // Rest day reframes the whole Today screen — no pressure, no guilt
+  const rest = isRestDay(DB, todayKey());
+  const restBtn = document.getElementById("restToggle");
+  restBtn.setAttribute("aria-pressed", rest);
+  restBtn.textContent = rest ? "🌙 Rest day: on" : "🌙 Rest day";
+  document.getElementById("view-today").classList.toggle("is-rest", rest);
+  document.getElementById("restBanner").innerHTML = rest
+    ? `<div class="rest-banner">🌙 <strong>Rest day.</strong> Nothing's expected of you today.
+       Tick things only if you genuinely want to.</div>`
+    : "";
+
   // Today — JARVIS speaks the status calmly, never naggy
   const prog = todayProgress(DB);
   document.getElementById("todaySummary").textContent =
-    prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
+    rest ? "A day for you. Be kind to yourself. 💙"
+    : prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
     : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
-    : `${prog.done} of ${prog.total} done — you're on track.`;
+    : `${prog.done} of ${prog.total} done — one thing at a time.`;
   renderTodayRoutines(DB);
+  renderTodayProjects(DB);
   renderTodayGoals(DB);
+  renderTodayGym(DB);
   renderTodayMoney(DB);
 
   // Other views
@@ -250,6 +264,25 @@ function wireEvents() {
 
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
+
+    // Project: tick the next step (advances the chain)
+    const pstep = e.target.closest("[data-project-step]");
+    if (pstep) { completeNextStep(DB, pstep.dataset.projectStep); render(); return; }
+
+    // Project: show/hide the whole plan (DOM-only toggle)
+    const ptoggle = e.target.closest("[data-project-toggle]");
+    if (ptoggle) {
+      const plan = document.getElementById("plan-" + ptoggle.dataset.projectToggle);
+      if (plan) plan.hidden = !plan.hidden;
+      return;
+    }
+
+    // Gym: log / undo a session
+    if (e.target.closest("[data-gym]")) { logGym(DB); render(); return; }
+    if (e.target.closest("[data-gym-undo]")) { undoGymToday(DB); render(); return; }
+
+    // Rest day toggle
+    if (e.target.closest("#restToggle")) { toggleRestDay(DB, todayKey()); render(); return; }
 
     // Close modal
     if (e.target.closest("[data-close-modal]")) { closeModal(); return; }
