@@ -303,3 +303,11 @@ render();
 if (DB.finance.csvUrl) {
   refreshFinance(DB).then((r) => { if (r.ok) render(); });
 }
+
+/* Register the service worker so JARVIS installs to the home screen and
+   works offline. Fails silently on file:// (which is fine). */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
