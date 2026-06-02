@@ -15,6 +15,8 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [x] **Fortnightly** routines (for fortnightly bin day) + edit/delete routines
 - [x] **Projects**: blocked chains shown one next-step at a time (e.g. laundry system)
 - [x] **Rest day** toggle (guilt-free do-nothing day) + gentle **Gym** weekly goal
+- [x] **Installable phone app (PWA) + deployed** to GitHub Pages — offline, home-screen
+      icon → https://curtainswine-cpu.github.io/house-ai/
 - [ ] "Well done" streaks / gentle encouragement
 - [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)

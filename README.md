@@ -11,14 +11,31 @@ Right now it helps with **routines/chores** and **money** (live Safe-to-Spend fr
 Finances Tracker). It's designed to grow into a full home display + automation system —
 the JARVIS that actually runs the house — when we get our own place.
 
-## Run it
+## Use it
 
-No installation, no accounts. Just open **`index.html`** in any browser
-(double-click it, or drag it onto a browser window). It works on phones, tablets
-and computers.
+**📱 Live app: https://curtainswine-cpu.github.io/house-ai/**
 
-Your data is saved automatically in that browser. (Phase 2 will add real syncing
-between Kirsten's and Jack's devices — see [docs/ROADMAP.md](docs/ROADMAP.md).)
+Open that link on your phone, then **add it to your home screen** to get a proper app
+icon that opens full-screen and works offline:
+
+- **Android (Galaxy/Chrome):** open the link → tap the **⋮** menu → **Add to Home screen** /
+  **Install app**.
+- **iPhone (Safari):** open the link → tap **Share** → **Add to Home Screen**.
+
+Your data is saved on **your device** (not on the web), so it's private to you. Each
+device keeps its own copy for now — real syncing between Kirsten & Jack is Phase 2
+(see [docs/ROADMAP.md](docs/ROADMAP.md)).
+
+You can also still just open **`index.html`** locally on a computer.
+
+## Updating the live app
+
+It's hosted on GitHub Pages from this repo (`curtainswine-cpu/house-ai`). To push changes:
+
+1. **Bump the cache version** in `sw.js` (e.g. `jarvis-v1` → `jarvis-v2`) so phones fetch
+   the new files instead of the cached old ones.
+2. `git add -A && git commit -m "..." && git push`
+3. GitHub Pages rebuilds in ~1 minute. Reopen the app to get the update.
 
 ## What's inside
 
