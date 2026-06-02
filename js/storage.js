@@ -1,7 +1,7 @@
 /* ============================================================
    storage.js — the single source of truth (for now)
    Everything is saved in the browser's localStorage. Later
-   (Phase 2) we swap this one file for a sync backend so Kirsty
+   (Phase 2) we swap this one file for a sync backend so Kirsten
    and Jack share the same data — nothing else needs to change.
    ============================================================ */
 
@@ -11,15 +11,15 @@ const STORAGE_KEY = "houseai.v1";
 function defaultData() {
   return {
     people: [
-      { id: "kirsty", name: "Kirsty", colour: "#5b8c7e" },
-      { id: "jack",   name: "Jack",   colour: "#6c7bb0" },
+      { id: "kirsten", name: "Kirsten", colour: "#46d6f5" }, // arc-reactor cyan
+      { id: "jack",    name: "Jack",    colour: "#e7b54a" }, // Iron Man gold
     ],
-    activePerson: "kirsty",
+    activePerson: "kirsten",
     routines: [
       {
         id: uid(),
         title: "Morning meds + water",
-        assignedTo: "kirsty",
+        assignedTo: "kirsten",
         timeOfDay: "morning",
         repeat: "daily",
         steps: ["Take meds", "Big glass of water"],

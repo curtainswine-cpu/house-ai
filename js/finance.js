@@ -109,7 +109,7 @@ function renderTodayMoney(db) {
   wrap.innerHTML = `
     <div class="money-card">
       <div>
-        <div class="money-card__label">Safe to spend</div>
+        <div class="money-card__label">Safe to spend · until payday</div>
         <div class="money-card__value">${money(db.finance.lastValue)}</div>
         <div class="money-card__hint">Updated ${formatAgo(db.finance.lastFetched)}</div>
       </div>
@@ -139,7 +139,7 @@ function renderMoneyView(db) {
 
   wrap.innerHTML = `
     <div class="sts">
-      <div class="sts__label">Safe to spend this month</div>
+      <div class="sts__label">Safe to spend until payday</div>
       <div class="sts__value">${money(db.finance.lastValue)}</div>
       <div class="sts__hint">Updated ${formatAgo(db.finance.lastFetched)}</div>
       <div class="sts__actions">

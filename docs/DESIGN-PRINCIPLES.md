@@ -27,7 +27,7 @@ decision — if a change breaks one of these, it's probably the wrong change.
 ## Shared / practical
 - **Mobile-first**, but works on any screen up to a wall tablet.
 - **Big touch targets** (minimum 44–48px) so it's easy to hit.
-- **Both of us are first-class.** Every item can be "Kirsty", "Jack", "Either" or
+- **Both of us are first-class.** Every item can be "Kirsten", "Jack", "Either" or
   "Both", with consistent colour coding.
 - **Accessible:** real buttons, labels, focus states, high-enough contrast.
 

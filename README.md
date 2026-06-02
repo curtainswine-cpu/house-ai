@@ -1,10 +1,15 @@
-# House AI 🏠
+# House AI — "JARVIS" 🔵
 
-A calm, shared hub for running our home and life — built for an ADHD brain and an
-Autistic partner. Low friction, predictable, no guilt.
+A calm, shared home hub styled as a friendly house **JARVIS** — built for an ADHD
+brain (Kirsten) and an Autistic partner (Jack). Low friction, predictable, no guilt.
 
-Right now it helps with **routines/chores** and **spending**. It's designed to grow
-into a full home display + automation system when we get our own place.
+It greets you by name and speaks in calm status lines. The look is an arc-reactor HUD
+(deep navy, soft cyan + gold) — deliberately **not** a flashing sci-fi dashboard, so it
+stays low-sensory for both of us (no flashing, gentle motion, honours "reduce motion").
+
+Right now it helps with **routines/chores** and **money** (live Safe-to-Spend from the
+Finances Tracker). It's designed to grow into a full home display + automation system —
+the JARVIS that actually runs the house — when we get our own place.
 
 ## Run it
 
@@ -13,7 +18,7 @@ No installation, no accounts. Just open **`index.html`** in any browser
 and computers.
 
 Your data is saved automatically in that browser. (Phase 2 will add real syncing
-between Kirsty's and Jack's devices — see [docs/ROADMAP.md](docs/ROADMAP.md).)
+between Kirsten's and Jack's devices — see [docs/ROADMAP.md](docs/ROADMAP.md).)
 
 ## What's inside
 

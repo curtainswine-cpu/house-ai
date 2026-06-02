@@ -43,21 +43,33 @@ function goto(view) {
   render();
 }
 
+/* JARVIS greeting — calm, by name, aware of the time of day. */
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 /* ---------- Render everything (cheap; data is small) ---------- */
 function render() {
-  // Date in the top bar
   const now = new Date();
+  const me = DB.people.find((p) => p.id === DB.activePerson);
+
+  // JARVIS greeting + date in the top bar
+  document.getElementById("greeting").textContent =
+    `${timeGreeting()}, ${me ? me.name : "there"}.`;
   document.getElementById("todayDate").textContent =
     now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
   renderPersonToggle();
 
-  // Today
+  // Today — JARVIS speaks the status calmly, never naggy
   const prog = todayProgress(DB);
   document.getElementById("todaySummary").textContent =
-    prog.total === 0 ? "Nothing due — breathe easy."
-    : prog.done === prog.total ? `All ${prog.total} done — amazing 🎉`
-    : `${prog.done} of ${prog.total} done`;
+    prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
+    : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
+    : `${prog.done} of ${prog.total} done — you're on track.`;
   renderTodayRoutines(DB);
   renderTodayMoney(DB);
 

@@ -14,12 +14,12 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [ ] Edit/delete a routine (currently add only)
 - [ ] "Well done" streaks / gentle encouragement
 
-## 🔜 Phase 2 — Shared between Kirsty & Jack
+## 🔜 Phase 2 — Shared between Kirsten & Jack
 The big one: same data on both our phones.
 
 - [ ] Move data from localStorage to a hosted database so routines/chores sync between
-      Kirsty & Jack (candidates: **Supabase**, or reuse the **Google Sheets** approach the
-      finance tracker already uses — Kirsty already has that ecosystem set up)
+      Kirsten & Jack (candidates: **Supabase**, or reuse the **Google Sheets** approach the
+      finance tracker already uses — Kirsten already has that ecosystem set up)
 - [ ] Accounts / a shared "household" both people join
 - [ ] Real-time updates (tick a chore on your phone, it ticks on mine)
 - [x] Connect the existing **Finances Tracker** (done in Phase 1 — live Safe-to-Spend)
