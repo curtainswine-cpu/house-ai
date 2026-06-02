@@ -207,6 +207,35 @@ function openRoutineModal(existing) {
   }
 }
 
+/* ---------- Add water (quick 250 ml steps + a specific amount) ---------- */
+function openWaterModal() {
+  openModal("Add water", `
+    <p style="margin:0;color:var(--muted)">Tap a quick fill, or type a specific amount.</p>
+    <div class="chip-row" id="wQuick">
+      ${[250, 500, 750, 1000].map((v) => `<button class="chip" data-add-water="${v}">+ ${v} ml</button>`).join("")}
+    </div>
+    <div class="field">
+      <label for="wCustom">Specific amount (ml)</label>
+      <input id="wCustom" type="number" inputmode="numeric" min="0" step="50" placeholder="e.g. 330 (a can / bottle)" autofocus />
+    </div>
+    <button class="btn btn--primary btn--block" id="wAdd">Add</button>
+  `);
+  // Quick chips add instantly
+  document.getElementById("wQuick").onclick = (e) => {
+    const b = e.target.closest("[data-add-water]"); if (!b) return;
+    addWater(DB, Number(b.dataset.addWater));
+    closeModal();
+    render();
+  };
+  // Custom amount
+  document.getElementById("wAdd").onclick = () => {
+    const v = Number(document.getElementById("wCustom").value);
+    if (v > 0) addWater(DB, v);
+    closeModal();
+    render();
+  };
+}
+
 /* ---------- Update today's step count (from your watch) ---------- */
 function openStepsModal() {
   const t = trackerFor(DB, todayKey());
@@ -258,7 +287,10 @@ function wireEvents() {
       return;
     }
 
-    // Water: add / undo a glass
+    // Water: open the "add a specific amount" picker
+    if (e.target.closest("[data-water-add]")) { openWaterModal(); return; }
+
+    // Water: quick add / remove
     const water = e.target.closest("[data-water]");
     if (water) { addWater(DB, Number(water.dataset.water)); render(); return; }
 

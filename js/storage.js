@@ -90,6 +90,7 @@ function defaultData() {
     // Gentle, guilt-free extras.
     gym: { perWeek: 2, sessions: [] }, // sessions = ["YYYY-MM-DD", ...]
     restDays: {},                      // "YYYY-MM-DD" -> true (a chosen do-nothing day)
+    appliedSeeds: {},                  // one-time seed additions already applied
 
     // Link to the existing Google-Sheets finance tracker (set up in the Money tab).
     finance: {
@@ -117,12 +118,36 @@ function normalize(db) {
   if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
+  if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
     if (p.name === "Kirsty") { p.name = "Kirsten"; p.colour = "#46d6f5"; }
     if (p.name === "Jack") { p.colour = "#e7b54a"; }
   });
+  applySeedAdditions(db);
   return db;
+}
+
+/* One-time routine additions that should reach EXISTING installs too.
+   Each block runs once (tracked in db.appliedSeeds) — so deleting an added
+   routine later won't make it reappear, and nothing ever duplicates. */
+function applySeedAdditions(db) {
+  const additions = [
+    {
+      key: "brushTeeth",
+      routines: [
+        { title: "Brush teeth", assignedTo: "kirsten", timeOfDay: "morning", repeat: "daily",
+          steps: [] },
+        { title: "Brush teeth", assignedTo: "kirsten", timeOfDay: "evening", repeat: "daily",
+          steps: ["2 mins — stick a song or a video on to beat the boredom"] },
+      ],
+    },
+  ];
+  additions.forEach((a) => {
+    if (db.appliedSeeds[a.key]) return;
+    a.routines.forEach((r) => db.routines.push(Object.assign({ id: uid() }, r)));
+    db.appliedSeeds[a.key] = true;
+  });
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

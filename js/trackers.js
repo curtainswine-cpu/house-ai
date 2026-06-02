@@ -119,8 +119,9 @@ function renderTodayGoals(db) {
         </div>
         <div class="bar"><div class="bar__fill" style="width:${waterPct}%"></div></div>
         <div class="goal__actions">
-          <button class="btn btn--mini" data-water="${g.glassMl}">+ Glass</button>
-          <button class="btn btn--mini btn--quiet" data-water="${-g.glassMl}">Undo</button>
+          <button class="btn btn--mini" data-water="${g.glassMl}">+ ${g.glassMl} ml</button>
+          <button class="btn btn--mini" data-water-add>+ Add…</button>
+          <button class="btn btn--mini btn--quiet" data-water="${-g.glassMl}">− ${g.glassMl}</button>
         </div>
       </div>
 
