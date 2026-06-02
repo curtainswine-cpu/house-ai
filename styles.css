@@ -211,6 +211,11 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   font-family: var(--mono); font-size: .8rem; color: var(--accent);
   flex: 0 0 auto; min-width: 68px;
 }
+.cal__src {
+  font-size: .66rem; font-weight: 650; padding: 1px 7px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
+  white-space: nowrap;
+}
 .cal__day { margin-top: 12px; }
 .cal__dayname { font-size: .78rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 .setup-steps { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }

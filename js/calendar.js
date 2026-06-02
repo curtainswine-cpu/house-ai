@@ -64,25 +64,37 @@ function calendarBootstrap(db, attempt) {
   }
 }
 
-/* Pull this week's events (today → +7 days) from the primary calendar. */
+function calAuth() { return { Authorization: "Bearer " + _calToken }; }
+
+/* Pull this week's events (today → +7 days) from ALL your calendars —
+   so Loop shifts, the Family calendar, etc. all show, not just primary. */
 async function fetchWeekEvents() {
   if (!calendarConnected()) return;
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const end = new Date(start); end.setDate(start.getDate() + 7);
-  const url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
-    + "?singleEvents=true&orderBy=startTime&maxResults=50"
-    + "&timeMin=" + encodeURIComponent(start.toISOString())
-    + "&timeMax=" + encodeURIComponent(end.toISOString());
+  const tMin = encodeURIComponent(start.toISOString());
+  const tMax = encodeURIComponent(end.toISOString());
   try {
-    const res = await fetch(url, { headers: { Authorization: "Bearer " + _calToken } });
-    if (!res.ok) { _calStatus = "Calendar fetch failed (" + res.status + ")."; return; }
-    const data = await res.json();
-    DB.calendar.lastEvents = (data.items || []).map((ev) => ({
-      summary: ev.summary || "(no title)",
-      start: (ev.start && (ev.start.dateTime || ev.start.date)) || null,
-      allDay: !(ev.start && ev.start.dateTime),
-    })).filter((e) => e.start);
+    const listRes = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", { headers: calAuth() });
+    if (!listRes.ok) { _calStatus = "Couldn't list your calendars (" + listRes.status + ")."; return; }
+    const cals = (await listRes.json()).items || [];
+    let all = [];
+    for (const cal of cals) {
+      if (cal.selected === false) continue; // respect hidden calendars
+      const url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(cal.id)
+        + "/events?singleEvents=true&orderBy=startTime&maxResults=50&timeMin=" + tMin + "&timeMax=" + tMax;
+      const r = await fetch(url, { headers: calAuth() });
+      if (!r.ok) continue;
+      const items = (await r.json()).items || [];
+      all = all.concat(items.map((ev) => ({
+        summary: ev.summary || "(no title)",
+        start: (ev.start && (ev.start.dateTime || ev.start.date)) || null,
+        allDay: !(ev.start && ev.start.dateTime),
+        cal: cal.summaryOverride || cal.summary || "",
+      })).filter((e) => e.start));
+    }
+    DB.calendar.lastEvents = all;
     DB.calendar.lastFetched = Date.now();
     saveDB(DB);
     _calStatus = "";
@@ -102,7 +114,9 @@ function eventTime(e) {
   return new Date(e.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 function eventRow(e) {
-  return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}</span></li>`;
+  // Show the source calendar name (e.g. "Loop", "Family") but never your email.
+  const src = (e.cal && !e.cal.includes("@")) ? ` <span class="cal__src">${escapeHTML(e.cal)}</span>` : "";
+  return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}${src}</span></li>`;
 }
 
 /* ---- Render the Today calendar card ---- */
