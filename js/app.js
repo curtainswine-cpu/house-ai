@@ -59,11 +59,11 @@ function render() {
     : prog.done === prog.total ? `All ${prog.total} done — amazing 🎉`
     : `${prog.done} of ${prog.total} done`;
   renderTodayRoutines(DB);
-  document.getElementById("todaySpendTotal").textContent = money(spentOn(DB, todayKey()));
+  renderTodayMoney(DB);
 
   // Other views
   renderRoutinesView(DB);
-  renderSpendingView(DB);
+  renderMoneyView(DB);
 }
 
 function renderPersonToggle() {
@@ -160,45 +160,6 @@ function openRoutineModal() {
   };
 }
 
-/* ---------- Add expense ---------- */
-function openExpenseModal() {
-  openModal("Add expense", `
-    <div class="field">
-      <label for="eAmt">Amount (£)</label>
-      <input id="eAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" autofocus />
-    </div>
-    <div class="field">
-      <label>Category</label>
-      <div class="chip-row" id="eCat">
-        ${CATEGORIES.map((c,i)=>`<button class="chip" data-cat="${c.id}" aria-pressed="${i===0}">${c.emoji} ${c.label}</button>`).join("")}
-      </div>
-    </div>
-    <div class="field">
-      <label for="eNote">Note (optional)</label>
-      <input id="eNote" placeholder="e.g. Tesco" />
-    </div>
-    <button class="btn btn--primary btn--block" id="eSave">Save expense</button>
-  `);
-
-  let cat = CATEGORIES[0].id;
-  document.getElementById("eCat").onclick = (e) => {
-    const b = e.target.closest("[data-cat]"); if (!b) return;
-    cat = b.dataset.cat; pressOne("eCat", b);
-  };
-  document.getElementById("eSave").onclick = () => {
-    const amount = parseFloat(document.getElementById("eAmt").value);
-    if (!(amount > 0)) { document.getElementById("eAmt").focus(); return; }
-    addExpense(DB, {
-      amount,
-      category: cat,
-      who: DB.activePerson,
-      note: document.getElementById("eNote").value.trim(),
-    });
-    closeModal();
-    goto("spending");
-  };
-}
-
 /* Toggle a single pressed chip within a group. */
 function pressOne(groupId, btn) {
   document.getElementById(groupId).querySelectorAll(".chip,[aria-pressed]")
@@ -225,16 +186,11 @@ function wireEvents() {
       return;
     }
 
-    // Delete expense
-    const del = e.target.closest("[data-del-expense]");
-    if (del) { deleteExpense(DB, del.dataset.delExpense); render(); return; }
-
     // Close modal
     if (e.target.closest("[data-close-modal]")) { closeModal(); return; }
   });
 
   document.getElementById("addRoutineBtn").onclick = openRoutineModal;
-  document.getElementById("addExpenseBtn").onclick = openExpenseModal;
 
   // Esc closes modal
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
@@ -243,3 +199,9 @@ function wireEvents() {
 /* ---------- Go! ---------- */
 wireEvents();
 render();
+
+/* Pull a fresh Safe-to-Spend in the background, then re-render.
+   The UI already shows the cached value instantly, so this never blocks. */
+if (DB.finance.csvUrl) {
+  refreshFinance(DB).then((r) => { if (r.ok) render(); });
+}

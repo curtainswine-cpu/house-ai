@@ -42,8 +42,15 @@ function defaultData() {
         steps: [],
       },
     ],
-    expenses: [],
     completions: {}, // key: "routineId|YYYY-MM-DD" -> true
+
+    // Link to the existing Google-Sheets finance tracker (set up in the Money tab).
+    finance: {
+      sheetUrl: "",      // the normal Sheet link, opened by the "Open Finances" button
+      csvUrl: "",        // "Publish to web" CSV link for the Dashboard tab (read-only)
+      lastValue: null,   // cached Safe-to-Spend number
+      lastFetched: null, // timestamp of last successful fetch
+    },
   };
 }
 

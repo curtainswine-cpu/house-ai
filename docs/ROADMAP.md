@@ -8,7 +8,8 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 
 - [x] Today dashboard (only what matters now)
 - [x] Routines & chores: assign to a person, time of day, daily/weekly/one-off, optional steps
-- [x] Spending: 2-tap capture, today / 7-day / 30-day totals
+- [x] Money: live **Safe-to-Spend** pulled from the Finances Tracker (published-CSV
+      link) + "Open Finances" button. No duplicate logging, no double-counting.
 - [x] Calm, accessible, mobile-first design with dark mode
 - [ ] Edit/delete a routine (currently add only)
 - [ ] "Well done" streaks / gentle encouragement
@@ -16,11 +17,12 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 ## 🔜 Phase 2 — Shared between Kirsty & Jack
 The big one: same data on both our phones.
 
-- [ ] Move data from localStorage to a hosted database
-      (**Supabase** is the front-runner — free tier, real-time sync, simple auth)
+- [ ] Move data from localStorage to a hosted database so routines/chores sync between
+      Kirsty & Jack (candidates: **Supabase**, or reuse the **Google Sheets** approach the
+      finance tracker already uses — Kirsty already has that ecosystem set up)
 - [ ] Accounts / a shared "household" both people join
 - [ ] Real-time updates (tick a chore on your phone, it ticks on mine)
-- [ ] Fold in the existing **Claude finance tracker** — reuse its data, richer money views
+- [x] Connect the existing **Finances Tracker** (done in Phase 1 — live Safe-to-Spend)
 - [ ] Add: meal planning + shopping list, appointments/reminders, bills & admin
 - [ ] Install to home screen (PWA) so it feels like a real app + works offline
 

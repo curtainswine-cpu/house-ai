@@ -36,13 +36,7 @@
         <!-- today's routines injected here -->
       </div>
 
-      <div class="today-spend">
-        <div class="today-spend__row">
-          <span>Spent today</span>
-          <strong id="todaySpendTotal">£0.00</strong>
-        </div>
-        <button class="btn btn--ghost" data-goto="spending">+ Log a quick expense</button>
-      </div>
+      <div id="todayMoney"></div>
     </section>
 
     <!-- ---- ROUTINES ---- -->
@@ -54,15 +48,12 @@
       <div id="routinesList" class="card-list"></div>
     </section>
 
-    <!-- ---- SPENDING ---- -->
-    <section id="view-spending" class="view" data-view="spending" hidden>
+    <!-- ---- MONEY (connects to the Finances Tracker) ---- -->
+    <section id="view-money" class="view" data-view="money" hidden>
       <div class="view__head">
-        <h2>Spending</h2>
-        <button class="btn btn--primary" id="addExpenseBtn">+ Add</button>
+        <h2>Money</h2>
       </div>
-
-      <div class="spend-summary" id="spendSummary"></div>
-      <div id="expensesList" class="card-list"></div>
+      <div id="moneyView"></div>
     </section>
 
   </main>
@@ -75,8 +66,8 @@
     <button class="tab" data-goto="routines">
       <span class="tab__icon">🔁</span><span class="tab__label">Routines</span>
     </button>
-    <button class="tab" data-goto="spending">
-      <span class="tab__icon">💷</span><span class="tab__label">Spending</span>
+    <button class="tab" data-goto="money">
+      <span class="tab__icon">💷</span><span class="tab__label">Money</span>
     </button>
   </nav>
 
@@ -95,7 +86,7 @@
   <!-- Scripts: plain globals so it works by just opening the file -->
   <script src="js/storage.js"></script>
   <script src="js/routines.js"></script>
-  <script src="js/spending.js"></script>
+  <script src="js/finance.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

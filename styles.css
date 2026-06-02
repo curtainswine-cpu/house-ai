@@ -138,25 +138,35 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .steps li { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--muted); }
 .steps li::before { content: "▢"; color: var(--accent); }
 
-/* ---------- Today spend strip ---------- */
-.today-spend {
-  margin-top: 18px; background: var(--surface); border: 1px solid var(--line);
+/* ---------- Money: Today card ---------- */
+.money-card {
+  margin-top: 18px; display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
 }
-.today-spend__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-.today-spend__row strong { font-size: 1.4rem; }
+.money-card__label { font-size: .78rem; color: var(--muted); }
+.money-card__value { font-size: 1.7rem; font-weight: 750; margin: 2px 0; }
+.money-card__hint { font-size: .8rem; color: var(--muted); }
+.money-card--prompt .money-card__hint { max-width: 30ch; }
 
-/* ---------- Spending ---------- */
-.spend-summary { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+/* ---------- Money: full view ---------- */
+.sts {
+  background: var(--accent-soft); border: 1px solid var(--accent-soft);
+  border-radius: var(--radius); padding: 22px; margin-bottom: 16px; text-align: center;
+}
+.sts__label { color: var(--accent); font-weight: 650; }
+.sts__value { font-size: 2.6rem; font-weight: 800; letter-spacing: -.02em; margin: 6px 0; color: var(--ink); }
+.sts__hint { color: var(--muted); font-size: .85rem; }
+.sts__actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.sts__actions .btn { background: var(--surface); }
+.sts__status { margin-top: 12px; font-size: .85rem; color: var(--amber); min-height: 1em; }
+
 .stat {
   flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
 }
 .stat__label { font-size: .78rem; color: var(--muted); }
 .stat__value { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
-
-.expense .card__main { display: flex; justify-content: space-between; gap: 12px; }
-.expense__amt { font-weight: 700; white-space: nowrap; }
 
 /* ---------- Bottom tab bar ---------- */
 .tabbar {
