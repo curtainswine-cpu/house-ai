@@ -1,0 +1,229 @@
+/* ============================================================
+   House AI — calm, low-sensory household hub
+   Design goals: predictable layout, soft palette, big tap
+   targets, no harsh reds, gentle (optional) motion.
+   ============================================================ */
+
+:root {
+  /* Calm warm palette — nothing harsh or alarming */
+  --bg:        #f7f6f3;
+  --surface:   #ffffff;
+  --surface-2: #f0eee9;
+  --ink:       #2b2b33;
+  --muted:     #6b6b76;
+  --line:      #e4e1da;
+
+  --accent:      #5b8c7e;  /* sage green */
+  --accent-soft: #e3efea;
+  --amber:       #c79a3e;  /* gentle "needs attention", not red */
+  --amber-soft:  #f6eed8;
+
+  /* Per-person colours (overridable later) */
+  --p1: #5b8c7e;  /* Kirsty */
+  --p2: #6c7bb0;  /* Jack   */
+
+  --radius:   16px;
+  --radius-sm:10px;
+  --shadow:   0 1px 2px rgba(40,40,50,.05), 0 6px 18px rgba(40,40,50,.06);
+  --tap:      48px; /* minimum touch target */
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-bottom: 88px; /* room for tab bar */
+}
+
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+button { font-family: inherit; font-size: inherit; cursor: pointer; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 16px 18px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-size: 1.35rem; }
+.topbar__date { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+.topbar__right { text-align: right; }
+.who-label { display: block; font-size: .72rem; color: var(--muted); margin-bottom: 4px; }
+
+.person-toggle { display: inline-flex; gap: 6px; }
+.person-toggle button {
+  min-height: 38px; padding: 0 14px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--muted);
+  font-weight: 600;
+}
+.person-toggle button[aria-pressed="true"] {
+  border-color: transparent; color: #fff;
+  background: var(--person-colour, var(--accent));
+}
+
+/* ---------- Views ---------- */
+.view { padding: 18px 18px 8px; animation: fade .2s ease; }
+.view__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.view__head h2 { font-size: 1.5rem; }
+.view__sub { margin: 4px 0 0; color: var(--muted); }
+
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Buttons ---------- */
+.btn {
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  font-weight: 600;
+}
+.btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn--ghost   { background: transparent; border-style: dashed; color: var(--muted); width: 100%; }
+.btn--block   { width: 100%; }
+.btn:active   { transform: translateY(1px); }
+
+.icon-btn {
+  width: var(--tap); height: var(--tap); border: none; background: transparent;
+  border-radius: 10px; font-size: 1.1rem; color: var(--muted);
+}
+
+/* ---------- Cards ---------- */
+.card-list { display: flex; flex-direction: column; gap: 10px; }
+
+.card {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.card__main { flex: 1; min-width: 0; }
+.card__title { font-weight: 620; }
+.card__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+
+.tag {
+  font-size: .74rem; font-weight: 650; padding: 3px 9px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.tag--person { color: #fff; background: var(--person-colour, var(--accent)); }
+.tag--time   { background: var(--accent-soft); color: var(--accent); }
+.tag--due    { background: var(--amber-soft); color: var(--amber); }
+
+/* Big satisfying check button */
+.check {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--surface);
+  display: grid; place-items: center; font-size: 1rem; color: transparent;
+  transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.check:hover { border-color: var(--accent); }
+.card.is-done .check {
+  background: var(--accent); border-color: var(--accent); color: #fff; transform: scale(1.05);
+}
+.card.is-done .card__title { color: var(--muted); text-decoration: line-through; }
+
+/* Routine steps (autism-friendly explicit breakdown) */
+.steps { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.steps li { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--muted); }
+.steps li::before { content: "▢"; color: var(--accent); }
+
+/* ---------- Today spend strip ---------- */
+.today-spend {
+  margin-top: 18px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+}
+.today-spend__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.today-spend__row strong { font-size: 1.4rem; }
+
+/* ---------- Spending ---------- */
+.spend-summary { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.stat {
+  flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.stat__label { font-size: .78rem; color: var(--muted); }
+.stat__value { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+
+.expense .card__main { display: flex; justify-content: space-between; gap: 12px; }
+.expense__amt { font-weight: 700; white-space: nowrap; }
+
+/* ---------- Bottom tab bar ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; justify-content: space-around;
+  max-width: 680px; margin: 0 auto;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+}
+.tab {
+  flex: 1; border: none; background: transparent; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; border-radius: 12px; min-height: var(--tap);
+}
+.tab__icon { font-size: 1.25rem; }
+.tab__label { font-size: .72rem; font-weight: 600; }
+.tab.is-active { color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- Modal ---------- */
+.modal-root { position: fixed; inset: 0; z-index: 50; display: grid; place-items: end center; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(30,30,38,.4); }
+.modal {
+  position: relative; width: 100%; max-width: 680px; background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0; padding: 18px 18px 28px;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.15); animation: slideUp .22s ease;
+  max-height: 88vh; overflow-y: auto;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+.modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.modal__body { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- Forms ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-size: .85rem; font-weight: 600; color: var(--muted); }
+.field input, .field select, .field textarea {
+  font: inherit; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  min-height: var(--tap);
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--surface); color: var(--muted); font-weight: 600; min-height: 40px;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ---------- Empty states ---------- */
+.empty {
+  text-align: center; color: var(--muted); padding: 36px 16px;
+  background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius);
+}
+.empty__emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+.link-btn { background: none; border: none; color: var(--accent); font-weight: 600; padding: 4px; }
+
+/* ---------- Respect reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Dark mode (calm, not pure black) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#1c1c20; --surface:#26262c; --surface-2:#2f2f36; --ink:#ececf0;
+    --muted:#a0a0ac; --line:#3a3a42; --accent-soft:#28332f;
+  }
+}
