@@ -17,6 +17,8 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [x] **Rest day** toggle (guilt-free do-nothing day) + gentle **Gym** weekly goal
 - [x] **Installable phone app (PWA) + deployed** to GitHub Pages — offline, home-screen
       icon → https://curtainswine-cpu.github.io/house-ai/
+- [x] **Live Google Calendar** (read-only, OAuth) — today's schedule + this week on the
+      Today screen. Setup: [docs/GOOGLE-CALENDAR-SETUP.md](GOOGLE-CALENDAR-SETUP.md)
 - [ ] "Well done" streaks / gentle encouragement
 - [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)

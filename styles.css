@@ -195,6 +195,30 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 
 .goal__hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
 
+/* ---------- Google Calendar card ---------- */
+.cal {
+  margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+}
+.cal__head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-weight: 600; margin-bottom: 10px;
+}
+.cal__sync { font-size: .72rem; color: var(--muted); font-weight: 500; }
+.cal__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cal__list li { display: flex; gap: 12px; align-items: baseline; }
+.cal__time {
+  font-family: var(--mono); font-size: .8rem; color: var(--accent);
+  flex: 0 0 auto; min-width: 68px;
+}
+.cal__day { margin-top: 12px; }
+.cal__dayname { font-size: .78rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.setup-steps { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+.setup-steps code {
+  font-family: var(--mono); font-size: .82rem; color: var(--accent);
+  background: var(--surface-2); padding: 2px 6px; border-radius: 6px; word-break: break-all;
+}
+
 /* ---------- Rest ("do nothing") day ---------- */
 #restToggle[aria-pressed="true"] {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent);

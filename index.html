@@ -16,6 +16,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
 
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Google Identity Services (for the live calendar sign-in) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <!-- ============ TOP BAR ============ -->
@@ -45,6 +48,7 @@
       <p class="view__sub" id="todaySummary">—</p>
 
       <div id="restBanner"></div>
+      <div id="todayCalendar"></div>
 
       <div id="todayRoutines" class="card-list">
         <!-- today's routines injected here -->
@@ -106,6 +110,7 @@
   <script src="js/projects.js"></script>
   <script src="js/trackers.js"></script>
   <script src="js/finance.js"></script>
+  <script src="js/calendar.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

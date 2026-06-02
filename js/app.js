@@ -82,6 +82,7 @@ function render() {
     : prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
     : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
     : `${prog.done} of ${prog.total} done — one thing at a time.`;
+  renderTodayCalendar(DB);
   renderTodayRoutines(DB);
   renderTodayProjects(DB);
   renderTodayGoals(DB);
@@ -316,6 +317,15 @@ function wireEvents() {
     // Rest day toggle
     if (e.target.closest("#restToggle")) { toggleRestDay(DB, todayKey()); render(); return; }
 
+    // Calendar: setup / connect / show week
+    if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
+    if (e.target.closest("[data-cal-refresh]")) { connectCalendar(DB); return; }
+    if (e.target.closest("[data-cal-week]")) {
+      const w = document.getElementById("calWeek");
+      if (w) w.hidden = !w.hidden;
+      return;
+    }
+
     // Close modal
     if (e.target.closest("[data-close-modal]")) { closeModal(); return; }
   });
@@ -335,6 +345,9 @@ render();
 if (DB.finance.csvUrl) {
   refreshFinance(DB).then((r) => { if (r.ok) render(); });
 }
+
+/* Quietly refresh the calendar on load (cached events already show). */
+calendarBootstrap(DB);
 
 /* Register the service worker so JARVIS installs to the home screen and
    works offline. Fails silently on file:// (which is fine). */

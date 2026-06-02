@@ -99,6 +99,13 @@ function defaultData() {
       lastValue: null,   // cached Safe-to-Spend number
       lastFetched: null, // timestamp of last successful fetch
     },
+
+    // Live Google Calendar (read-only). clientId = her OAuth Web client ID.
+    calendar: {
+      clientId: "",      // safe to store (public, origin-restricted)
+      lastEvents: [],    // cached events so today's plan shows instantly/offline
+      lastFetched: null,
+    },
   };
 }
 
@@ -118,6 +125,8 @@ function normalize(db) {
   if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
+  db.calendar = Object.assign({}, d.calendar, db.calendar || {});
+  if (!Array.isArray(db.calendar.lastEvents)) db.calendar.lastEvents = [];
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
