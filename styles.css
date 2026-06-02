@@ -122,6 +122,9 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 }
 .btn--ghost { background: transparent; border-style: dashed; color: var(--muted); width: 100%; }
 .btn--block { width: 100%; }
+.btn--mini { min-height: 36px; padding: 0 14px; font-size: .9rem; }
+.btn--quiet { background: transparent; color: var(--muted); }
+.btn--danger { background: transparent; border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); color: var(--gold); }
 .btn:active { transform: translateY(1px); }
 
 .icon-btn {
@@ -167,6 +170,28 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .steps { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .steps li { display: flex; gap: 8px; align-items: center; font-size: .92rem; color: var(--muted); }
 .steps li::before { content: "▢"; color: var(--accent); }
+
+/* ---------- Daily goals (water + steps) ---------- */
+.goals {
+  margin-top: 18px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+}
+.goals__head {
+  font-size: .72rem; color: var(--muted); letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.goal { margin-bottom: 14px; }
+.goal:last-child { margin-bottom: 0; }
+.goal__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.goal__name { font-weight: 600; }
+.goal__val { font-family: var(--mono); font-size: .9rem; color: var(--muted); }
+.bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar__fill {
+  height: 100%; border-radius: 999px; background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-soft); transition: width .3s ease;
+}
+.bar__fill--gold { background: var(--gold); box-shadow: 0 0 8px var(--gold-soft); }
+.goal__actions { display: flex; gap: 8px; margin-top: 10px; }
 
 /* ---------- Money: Today card ---------- */
 .money-card {

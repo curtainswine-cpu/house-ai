@@ -10,9 +10,12 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [x] Routines & chores: assign to a person, time of day, daily/weekly/one-off, optional steps
 - [x] Money: live **Safe-to-Spend** pulled from the Finances Tracker (published-CSV
       link) + "Open Finances" button. No duplicate logging, no double-counting.
-- [x] Calm, accessible, mobile-first design with dark mode
-- [ ] Edit/delete a routine (currently add only)
+- [x] "JARVIS" theme — greets by name, calm arc-reactor HUD
+- [x] Daily goals: **Water** (2 L, tap a glass) + **Steps** (8,000, update from watch)
+- [x] **Fortnightly** routines (for fortnightly bin day) + edit/delete routines
 - [ ] "Well done" streaks / gentle encouragement
+- [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)
+- [ ] Link out to the Meal Planner app (and add a freezer inventory there)
 
 ## 🔜 Phase 2 — Shared between Kirsten & Jack
 The big one: same data on both our phones.

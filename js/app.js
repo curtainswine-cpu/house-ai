@@ -71,6 +71,7 @@ function render() {
     : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
     : `${prog.done} of ${prog.total} done — you're on track.`;
   renderTodayRoutines(DB);
+  renderTodayGoals(DB);
   renderTodayMoney(DB);
 
   // Other views
@@ -97,18 +98,28 @@ function closeModal() {
   document.getElementById("modalBody").innerHTML = "";
 }
 
-/* ---------- Add / edit routine ---------- */
-function openRoutineModal() {
+/* ---------- Add / edit routine ----------
+   Pass an existing routine to edit it; pass nothing to add a new one. */
+function openRoutineModal(existing) {
+  const r = existing || { timeOfDay: "morning", repeat: "daily", steps: [], assignedTo: "either" };
+  const isEdit = !!existing;
+
   const peopleOpts = [
-    `<option value="either">Either of us</option>`,
-    `<option value="both">Both of us</option>`,
-    ...DB.people.map((p) => `<option value="${p.id}">${escapeHTML(p.name)}</option>`),
+    `<option value="either"${r.assignedTo === "either" ? " selected" : ""}>Either of us</option>`,
+    `<option value="both"${r.assignedTo === "both" ? " selected" : ""}>Both of us</option>`,
+    ...DB.people.map((p) => `<option value="${p.id}"${r.assignedTo === p.id ? " selected" : ""}>${escapeHTML(p.name)}</option>`),
   ].join("");
 
-  openModal("New routine", `
+  const timeChips = ["morning","afternoon","evening","anytime"].map((t) =>
+    `<button class="chip" data-time="${t}" aria-pressed="${r.timeOfDay === t}">${TIME_LABEL[t]}</button>`).join("");
+
+  const repeatChips = [["daily","Every day"],["weekly","Weekly"],["fortnightly","Fortnightly"],["once","One-off"]]
+    .map(([val,label]) => `<button class="chip" data-repeat="${val}" aria-pressed="${r.repeat === val}">${label}</button>`).join("");
+
+  openModal(isEdit ? "Edit routine" : "New routine", `
     <div class="field">
       <label for="rTitle">What is it?</label>
-      <input id="rTitle" placeholder="e.g. Evening kitchen reset" autofocus />
+      <input id="rTitle" placeholder="e.g. Evening kitchen reset" value="${escapeAttr(r.title || "")}" />
     </div>
     <div class="field">
       <label for="rWho">Who does it?</label>
@@ -116,31 +127,30 @@ function openRoutineModal() {
     </div>
     <div class="field">
       <label>When in the day?</label>
-      <div class="chip-row" id="rTime">
-        ${["morning","afternoon","evening","anytime"].map((t,i) =>
-          `<button class="chip" data-time="${t}" aria-pressed="${i===0}">${TIME_LABEL[t]}</button>`).join("")}
-      </div>
+      <div class="chip-row" id="rTime">${timeChips}</div>
     </div>
     <div class="field">
       <label>How often?</label>
-      <div class="chip-row" id="rRepeat">
-        <button class="chip" data-repeat="daily" aria-pressed="true">Every day</button>
-        <button class="chip" data-repeat="weekly">Weekly</button>
-        <button class="chip" data-repeat="once">One-off</button>
-      </div>
+      <div class="chip-row" id="rRepeat">${repeatChips}</div>
     </div>
-    <div class="field" id="rDayWrap" hidden>
+    <div class="field" id="rDayWrap" ${r.repeat === "weekly" ? "" : "hidden"}>
       <label for="rDay">Which day?</label>
-      <select id="rDay">${WEEKDAYS.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select>
+      <select id="rDay">${WEEKDAYS.map((d,i)=>`<option value="${i}"${r.repeatDay === i ? " selected" : ""}>${d}</option>`).join("")}</select>
+    </div>
+    <div class="field" id="rAnchorWrap" ${r.repeat === "fortnightly" ? "" : "hidden"}>
+      <label for="rAnchor">The next one falls on</label>
+      <input id="rAnchor" type="date" value="${escapeAttr(r.anchorDate || todayKey())}" />
+      <small style="color:var(--muted)">e.g. your next bin day — then it repeats every 2 weeks.</small>
     </div>
     <div class="field">
       <label for="rSteps">Steps (optional, one per line — helps break it down)</label>
-      <textarea id="rSteps" rows="3" placeholder="Dishes away&#10;Wipe surfaces&#10;Start dishwasher"></textarea>
+      <textarea id="rSteps" rows="3" placeholder="Dishes away&#10;Wipe surfaces&#10;Start dishwasher">${escapeHTML((r.steps || []).join("\n"))}</textarea>
     </div>
-    <button class="btn btn--primary btn--block" id="rSave">Save routine</button>
+    <button class="btn btn--primary btn--block" id="rSave">${isEdit ? "Save changes" : "Save routine"}</button>
+    ${isEdit ? `<button class="btn btn--danger btn--block" id="rDelete">Delete this routine</button>` : ""}
   `);
 
-  let time = "morning", repeat = "daily";
+  let time = r.timeOfDay, repeat = r.repeat;
 
   document.getElementById("rTime").onclick = (e) => {
     const b = e.target.closest("[data-time]"); if (!b) return;
@@ -150,6 +160,7 @@ function openRoutineModal() {
     const b = e.target.closest("[data-repeat]"); if (!b) return;
     repeat = b.dataset.repeat; pressOne("rRepeat", b);
     document.getElementById("rDayWrap").hidden = repeat !== "weekly";
+    document.getElementById("rAnchorWrap").hidden = repeat !== "fortnightly";
   };
 
   document.getElementById("rSave").onclick = () => {
@@ -157,16 +168,43 @@ function openRoutineModal() {
     if (!title) { document.getElementById("rTitle").focus(); return; }
     const steps = document.getElementById("rSteps").value
       .split("\n").map((s) => s.trim()).filter(Boolean);
-    DB.routines.push({
-      id: uid(),
+    const patch = {
       title,
       assignedTo: document.getElementById("rWho").value,
       timeOfDay: time,
       repeat,
       repeatDay: repeat === "weekly" ? Number(document.getElementById("rDay").value) : undefined,
+      anchorDate: repeat === "fortnightly" ? document.getElementById("rAnchor").value : undefined,
       steps,
-    });
+    };
+    if (isEdit) Object.assign(r, patch);
+    else DB.routines.push(Object.assign({ id: uid() }, patch));
     saveDB(DB);
+    closeModal();
+    render();
+  };
+
+  if (isEdit) {
+    document.getElementById("rDelete").onclick = () => {
+      deleteRoutine(DB, r.id);
+      closeModal();
+      render();
+    };
+  }
+}
+
+/* ---------- Update today's step count (from your watch) ---------- */
+function openStepsModal() {
+  const t = trackerFor(DB, todayKey());
+  openModal("Update steps", `
+    <div class="field">
+      <label for="sCount">Steps so far today (check your watch)</label>
+      <input id="sCount" type="number" inputmode="numeric" min="0" step="100" value="${t.steps || ""}" placeholder="e.g. 5200" autofocus />
+    </div>
+    <button class="btn btn--primary btn--block" id="sSave">Save</button>
+  `);
+  document.getElementById("sSave").onclick = () => {
+    setSteps(DB, document.getElementById("sCount").value);
     closeModal();
     render();
   };
@@ -197,6 +235,21 @@ function wireEvents() {
       render();
       return;
     }
+
+    // Edit a routine (pencil on the Routines view)
+    const edit = e.target.closest("[data-edit-routine]");
+    if (edit) {
+      const routine = DB.routines.find((r) => r.id === edit.dataset.editRoutine);
+      if (routine) openRoutineModal(routine);
+      return;
+    }
+
+    // Water: add / undo a glass
+    const water = e.target.closest("[data-water]");
+    if (water) { addWater(DB, Number(water.dataset.water)); render(); return; }
+
+    // Steps: open the quick update
+    if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
 
     // Close modal
     if (e.target.closest("[data-close-modal]")) { closeModal(); return; }

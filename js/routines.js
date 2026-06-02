@@ -7,10 +7,25 @@
 const TIME_ORDER = { morning: 0, afternoon: 1, evening: 2, anytime: 3 };
 const TIME_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", anytime: "Anytime" };
 
+const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off" };
+
+/* Whole days between two dates, ignoring the time of day. */
+function daysBetween(a, b) {
+  const a0 = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const b0 = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((b0 - a0) / 86400000);
+}
+
 /* Is this routine due on the given date? */
 function isRoutineDue(routine, date) {
   if (routine.repeat === "daily") return true;
   if (routine.repeat === "weekly") return date.getDay() === (routine.repeatDay ?? 1);
+  if (routine.repeat === "fortnightly") {
+    if (!routine.anchorDate) return false;
+    const anchor = new Date(routine.anchorDate + "T00:00:00");
+    const diff = daysBetween(anchor, date);
+    return diff >= 0 && diff % 14 === 0; // every 2 weeks from the anchor bin day
+  }
   if (routine.repeat === "once") return true; // shows until completed
   return true;
 }
@@ -54,6 +69,9 @@ function routineCardHTML(db, r, dateKey, opts = {}) {
   const steps = (opts.showSteps && r.steps && r.steps.length)
     ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>`
     : "";
+  const editBtn = opts.editable
+    ? `<button class="icon-btn" data-edit-routine="${r.id}" aria-label="Edit routine">✎</button>`
+    : "";
   return `
     <article class="card routine ${done ? "is-done" : ""}" data-routine="${r.id}">
       <button class="check" data-toggle="${r.id}" aria-label="Mark done">✓</button>
@@ -62,11 +80,21 @@ function routineCardHTML(db, r, dateKey, opts = {}) {
         <div class="card__meta">
           ${whoTag(db, r.assignedTo)}
           <span class="tag tag--time">${TIME_LABEL[r.timeOfDay] || "Anytime"}</span>
-          <span class="tag">${r.repeat === "weekly" ? "Weekly" : r.repeat === "once" ? "One-off" : "Daily"}</span>
+          <span class="tag">${REPEAT_LABEL[r.repeat] || "Daily"}</span>
         </div>
         ${steps}
       </div>
+      ${editBtn}
     </article>`;
+}
+
+/* Delete a routine and tidy up its completion history. */
+function deleteRoutine(db, id) {
+  db.routines = db.routines.filter((r) => r.id !== id);
+  Object.keys(db.completions).forEach((k) => {
+    if (k.startsWith(id + "|")) delete db.completions[k];
+  });
+  saveDB(db);
 }
 
 /* ---- Render the full Routines view ---- */
@@ -78,7 +106,7 @@ function renderRoutinesView(db) {
   }
   const dateKey = todayKey();
   list.innerHTML = db.routines
-    .map((r) => routineCardHTML(db, r, dateKey, { showSteps: true }))
+    .map((r) => routineCardHTML(db, r, dateKey, { showSteps: true, editable: true }))
     .join("");
 }
 
