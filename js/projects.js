@@ -28,6 +28,58 @@ function completeNextStep(db, projectId) {
   saveDB(db);
 }
 
+/* Create / update / delete whole projects. */
+function createProject(db, { emoji, title, stepTitles }) {
+  db.projects.push({
+    id: uid(),
+    emoji: emoji || "📋",
+    title,
+    steps: stepTitles.map((t) => ({ title: t, done: false })),
+  });
+  saveDB(db);
+}
+function updateProject(db, id, { emoji, title, stepTitles }) {
+  const p = db.projects.find((x) => x.id === id);
+  if (!p) return;
+  p.emoji = emoji || "📋";
+  p.title = title;
+  // Preserve "done" for any step whose wording is unchanged.
+  p.steps = stepTitles.map((t) => {
+    const old = p.steps.find((s) => s.title === t);
+    return { title: t, done: old ? old.done : false };
+  });
+  saveDB(db);
+}
+function deleteProject(db, id) {
+  db.projects = db.projects.filter((p) => p.id !== id);
+  saveDB(db);
+}
+
+/* ---- Render the projects manager (in the Routines tab) ---- */
+function renderProjectsManager(db) {
+  const wrap = document.getElementById("projectsList");
+  if (!wrap) return;
+  if (!db.projects.length) {
+    wrap.innerHTML = emptyState("📋", "No projects yet",
+      "Break a big, stuck task into steps — JARVIS only ever shows you the next one.");
+    return;
+  }
+  wrap.innerHTML = db.projects.map((p) => {
+    const prog = projectProgress(p);
+    const done = isProjectComplete(p);
+    return `
+      <article class="card">
+        <div class="card__main">
+          <div class="card__title">${p.emoji || "📋"} ${escapeHTML(p.title)}</div>
+          <div class="card__meta">
+            <span class="tag ${done ? "tag--time" : ""}">${prog.done}/${prog.total}${done ? " · done 🎉" : ""}</span>
+          </div>
+        </div>
+        <button class="icon-btn" data-edit-project="${p.id}" aria-label="Edit project">✎</button>
+      </article>`;
+  }).join("");
+}
+
 /* Undo the most recently completed step. */
 function undoLastStep(db, projectId) {
   const p = db.projects.find((x) => x.id === projectId);

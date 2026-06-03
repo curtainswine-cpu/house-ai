@@ -63,10 +63,20 @@
     <!-- ---- ROUTINES ---- -->
     <section id="view-routines" class="view" data-view="routines" hidden>
       <div class="view__head">
-        <h2>Routines &amp; Chores</h2>
-        <button class="btn btn--primary" id="addRoutineBtn">+ New</button>
+        <h2>Routines</h2>
+        <div class="head-actions">
+          <button class="btn btn--mini" id="suggestRoutinesBtn">Suggestions</button>
+          <button class="btn btn--primary" id="addRoutineBtn">+ New</button>
+        </div>
       </div>
       <div id="routinesList" class="card-list"></div>
+
+      <div class="subhead-row">
+        <h3>Projects</h3>
+        <button class="btn btn--mini" id="addProjectBtn">+ New</button>
+      </div>
+      <p class="view__sub" style="margin:0 0 12px">Big stuck tasks, broken into steps — only the next one shows on Today.</p>
+      <div id="projectsList" class="card-list"></div>
     </section>
 
     <!-- ---- MONEY (connects to the Finances Tracker) ---- -->

@@ -23,7 +23,8 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)
 - [ ] Don't surface morning nudges before ~9:30 (Kirsten's preferred wake time)
-- [ ] Add/edit projects in the UI (currently the laundry one is seeded)
+- [x] Add/edit/delete your own **projects** in the Routines tab
+- [x] **Suggestions** picker — one-tap add starter routines (fills gaps in older installs)
 - [ ] Link out to the Meal Planner app (and add a freezer inventory there)
 
 ## 🔜 Phase 2 — Shared between Kirsten & Jack

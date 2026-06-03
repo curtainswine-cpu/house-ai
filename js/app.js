@@ -91,6 +91,7 @@ function render() {
 
   // Other views
   renderRoutinesView(DB);
+  renderProjectsManager(DB);
   renderMoneyView(DB);
 }
 
@@ -208,6 +209,62 @@ function openRoutineModal(existing) {
   }
 }
 
+/* ---------- Create / edit a project ---------- */
+function openProjectModal(existing) {
+  const p = existing || { emoji: "", title: "", steps: [] };
+  const isEdit = !!existing;
+  openModal(isEdit ? "Edit project" : "New project", `
+    <div class="field">
+      <label for="pEmoji">Icon (optional)</label>
+      <input id="pEmoji" maxlength="2" placeholder="🧺" value="${escapeAttr(p.emoji || "")}" style="max-width:90px" />
+    </div>
+    <div class="field">
+      <label for="pTitle">Project name</label>
+      <input id="pTitle" placeholder="e.g. Sort the spare room" value="${escapeAttr(p.title || "")}" />
+    </div>
+    <div class="field">
+      <label for="pSteps">Steps in order (one per line) — JARVIS shows only the next one</label>
+      <textarea id="pSteps" rows="5" placeholder="Buy storage boxes&#10;Clear the floor&#10;Sort keep / donate&#10;Put it all away">${escapeHTML((p.steps || []).map((s) => s.title).join("\n"))}</textarea>
+    </div>
+    <button class="btn btn--primary btn--block" id="pSave">${isEdit ? "Save changes" : "Create project"}</button>
+    ${isEdit ? `<button class="btn btn--danger btn--block" id="pDelete">Delete project</button>` : ""}
+  `);
+  document.getElementById("pSave").onclick = () => {
+    const title = document.getElementById("pTitle").value.trim();
+    if (!title) { document.getElementById("pTitle").focus(); return; }
+    const data = {
+      emoji: document.getElementById("pEmoji").value.trim(),
+      title,
+      stepTitles: document.getElementById("pSteps").value.split("\n").map((s) => s.trim()).filter(Boolean),
+    };
+    if (isEdit) updateProject(DB, p.id, data);
+    else createProject(DB, data);
+    closeModal();
+    render();
+  };
+  if (isEdit) {
+    document.getElementById("pDelete").onclick = () => { deleteProject(DB, p.id); closeModal(); render(); };
+  }
+}
+
+/* ---------- Suggested routines picker ---------- */
+function openSuggestionsModal() {
+  const have = new Set(DB.routines.map((r) => r.title));
+  const rows = SUGGESTED_ROUTINES.map((s, i) => {
+    const added = have.has(s.title);
+    return `
+      <div class="suggest-row">
+        <div>
+          <div class="suggest-title">${escapeHTML(s.title)}</div>
+          <div class="suggest-meta">${TIME_LABEL[s.timeOfDay]} · ${REPEAT_LABEL[s.repeat]}</div>
+        </div>
+        <button class="btn btn--mini ${added ? "btn--quiet" : ""}" data-add-suggestion="${i}" ${added ? "disabled" : ""}>${added ? "Added ✓" : "Add"}</button>
+      </div>`;
+  }).join("");
+  openModal("Suggested routines",
+    `<p style="margin:0 0 4px;color:var(--muted)">Tap to add any that fit — you can edit them after.</p>${rows}`);
+}
+
 /* ---------- Add water (quick 250 ml steps + a specific amount) ---------- */
 function openWaterModal() {
   openModal("Add water", `
@@ -288,6 +345,25 @@ function wireEvents() {
       return;
     }
 
+    // Edit a project
+    const editP = e.target.closest("[data-edit-project]");
+    if (editP) {
+      const project = DB.projects.find((p) => p.id === editP.dataset.editProject);
+      if (project) openProjectModal(project);
+      return;
+    }
+
+    // Add a suggested routine (keeps the picker open)
+    const sug = e.target.closest("[data-add-suggestion]");
+    if (sug && !sug.disabled) {
+      const s = SUGGESTED_ROUTINES[+sug.dataset.addSuggestion];
+      DB.routines.push(Object.assign({ id: uid() }, JSON.parse(JSON.stringify(s))));
+      saveDB(DB);
+      sug.textContent = "Added ✓"; sug.classList.add("btn--quiet"); sug.disabled = true;
+      render();
+      return;
+    }
+
     // Water: open the "add a specific amount" picker
     if (e.target.closest("[data-water-add]")) { openWaterModal(); return; }
 
@@ -330,7 +406,9 @@ function wireEvents() {
     if (e.target.closest("[data-close-modal]")) { closeModal(); return; }
   });
 
-  document.getElementById("addRoutineBtn").onclick = openRoutineModal;
+  document.getElementById("addRoutineBtn").onclick = () => openRoutineModal();
+  document.getElementById("addProjectBtn").onclick = () => openProjectModal();
+  document.getElementById("suggestRoutinesBtn").onclick = openSuggestionsModal;
 
   // Esc closes modal
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });

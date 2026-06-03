@@ -236,6 +236,21 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 /* On a rest day, soften the routines so they read as optional, not demands */
 .is-rest #todayRoutines { opacity: .55; }
 
+/* ---------- Routines view extras ---------- */
+.head-actions { display: flex; gap: 8px; align-items: center; }
+.subhead-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 24px 0 4px;
+}
+.subhead-row h3 { font-size: 1.05rem; }
+.suggest-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--line);
+}
+.suggest-row:last-child { border-bottom: 0; }
+.suggest-title { font-weight: 600; }
+.suggest-meta { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+
 /* ---------- Projects: one next step ---------- */
 .project {
   margin-bottom: 10px; background: var(--surface); border: 1px solid var(--line);

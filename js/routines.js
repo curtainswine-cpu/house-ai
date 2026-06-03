@@ -9,6 +9,17 @@ const TIME_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Eveni
 
 const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off" };
 
+/* Ready-made routines Kirsten can add with one tap (fills gaps the live
+   app may be missing). Shown in the "Suggestions" picker. */
+const SUGGESTED_ROUTINES = [
+  { title: "Put watch on (before work)", timeOfDay: "morning", repeat: "daily", assignedTo: "kirsten", steps: ["Grab watch off charge", "Put it on"] },
+  { title: "Put watch on charge", timeOfDay: "evening", repeat: "daily", assignedTo: "kirsten", steps: ["Pop it on charge (~2 hrs) so it's ready for the morning"] },
+  { title: "Morning meds + vitamins", timeOfDay: "morning", repeat: "daily", assignedTo: "kirsten", steps: ["Take meds", "Take vitamins", "Big glass of water"] },
+  { title: "Kitchen reset", timeOfDay: "evening", repeat: "daily", assignedTo: "either", steps: ["Dishes away", "Wipe surfaces", "Start dishwasher"] },
+  { title: "Bins out", timeOfDay: "evening", repeat: "fortnightly", anchorDate: todayKey(), assignedTo: "either", steps: ["Check there's a bin liner ready", "Put the bins out"] },
+  { title: "10-minute tidy", timeOfDay: "anytime", repeat: "daily", assignedTo: "either", steps: ["Set a timer", "Just 10 minutes, then stop"] },
+];
+
 /* Whole days between two dates, ignoring the time of day. */
 function daysBetween(a, b) {
   const a0 = new Date(a.getFullYear(), a.getMonth(), a.getDate());
