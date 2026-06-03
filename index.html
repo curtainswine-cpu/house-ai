@@ -87,6 +87,20 @@
       <div id="moneyView"></div>
     </section>
 
+    <!-- ---- LEARN PUNJABI ---- -->
+    <section id="view-learn" class="view" data-view="learn" hidden>
+      <div class="view__head">
+        <h2>Learn Punjabi</h2>
+      </div>
+      <div class="seg" id="learnTabs" role="tablist">
+        <button class="seg__btn is-active" data-learn="words">Words</button>
+        <button class="seg__btn" data-learn="cards">Flashcards</button>
+        <button class="seg__btn" data-learn="add">Add</button>
+        <button class="seg__btn" data-learn="import">Import</button>
+      </div>
+      <div id="learnBody" class="card-list"></div>
+    </section>
+
   </main>
 
   <!-- ============ BOTTOM NAV ============ -->
@@ -99,6 +113,9 @@
     </button>
     <button class="tab" data-goto="money">
       <span class="tab__icon">💷</span><span class="tab__label">Money</span>
+    </button>
+    <button class="tab" data-goto="learn">
+      <span class="tab__icon">📚</span><span class="tab__label">Learn</span>
     </button>
   </nav>
 
@@ -121,6 +138,7 @@
   <script src="js/trackers.js"></script>
   <script src="js/finance.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/punjabi.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

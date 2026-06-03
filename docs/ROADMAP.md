@@ -25,6 +25,9 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [ ] Don't surface morning nudges before ~9:30 (Kirsten's preferred wake time)
 - [x] Add/edit/delete your own **projects** in the Routines tab
 - [x] **Suggestions** picker — one-tap add starter routines (fills gaps in older installs)
+- [x] **Learn Punjabi** tab — word list (editable to correct translations), spoken aloud
+      (browser TTS), flashcards, add-your-own, bulk import. For learning from her nurse
+      colleague's words. (Built natively in JARVIS — NOT the React .jsx from the other chat.)
 - [ ] Link out to the Meal Planner app (and add a freezer inventory there)
 
 ## 🔜 Phase 2 — Shared between Kirsten & Jack

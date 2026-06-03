@@ -111,6 +111,22 @@ function defaultData() {
       lastFetched: null,
       connectedOnce: false, // only auto-refresh after she's signed in once
     },
+
+    // Learn Punjabi — starter words (verify/correct freely; add your own).
+    punjabi: {
+      words: [
+        { id: uid(), en: "Hello (greeting)", pa: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", rom: "Sat sri akaal" },
+        { id: uid(), en: "Thank you", pa: "ਧੰਨਵਾਦ", rom: "Dhanvaad" },
+        { id: uid(), en: "Yes", pa: "ਹਾਂ", rom: "Haan" },
+        { id: uid(), en: "No", pa: "ਨਹੀਂ", rom: "Nahin" },
+        { id: uid(), en: "Water", pa: "ਪਾਣੀ", rom: "Paani" },
+        { id: uid(), en: "Pain", pa: "ਦਰਦ", rom: "Dard" },
+        { id: uid(), en: "Medicine", pa: "ਦਵਾਈ", rom: "Davaai" },
+        { id: uid(), en: "Are you okay?", pa: "ਕੀ ਤੁਸੀਂ ਠੀਕ ਹੋ?", rom: "Ki tusi theek ho?" },
+        { id: uid(), en: "Please", pa: "ਕਿਰਪਾ ਕਰਕੇ", rom: "Kirpa karke" },
+        { id: uid(), en: "Food", pa: "ਖਾਣਾ", rom: "Khaana" },
+      ],
+    },
   };
 }
 
@@ -133,6 +149,7 @@ function normalize(db) {
   db.calendar = Object.assign({}, d.calendar, db.calendar || {});
   if (!db.calendar.clientId) db.calendar.clientId = DEFAULT_CALENDAR_CLIENT_ID; // reaches older installs too
   if (!Array.isArray(db.calendar.lastEvents)) db.calendar.lastEvents = [];
+  if (!db.punjabi || !Array.isArray(db.punjabi.words)) db.punjabi = d.punjabi;
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {

@@ -195,6 +195,34 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 
 .goal__hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
 
+/* ---------- Learn Punjabi ---------- */
+.seg {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 16px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+}
+.seg__btn {
+  flex: 1; border: none; background: transparent; color: var(--muted);
+  padding: 9px 6px; border-radius: 999px; font-weight: 600; font-size: .9rem;
+}
+.seg__btn.is-active { background: var(--accent); color: #07101a; }
+
+.word__speak { font-size: 1rem; }
+.word__pa { font-size: 1.35rem; margin-top: 4px; }
+.word__rom { color: var(--muted); font-size: .9rem; margin-top: 2px; }
+
+.flash {
+  min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 8px; padding: 28px 18px; cursor: pointer;
+  background: radial-gradient(120% 120% at 50% 0%, var(--accent-soft), transparent 70%), var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.flash__hint { font-size: .72rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.flash__en { font-size: 1.8rem; font-weight: 700; }
+.flash__pa { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
+.flash__rom { color: var(--muted); margin-top: 6px; font-size: 1.05rem; }
+.flash__controls { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.flash__count { text-align: center; color: var(--muted); font-family: var(--mono); font-size: .8rem; margin-top: 10px; }
+
 /* ---------- Google Calendar card ---------- */
 .cal {
   margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line);

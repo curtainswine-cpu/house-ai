@@ -93,6 +93,7 @@ function render() {
   renderRoutinesView(DB);
   renderProjectsManager(DB);
   renderMoneyView(DB);
+  renderLearn(DB);
 }
 
 function renderPersonToggle() {
@@ -392,6 +393,40 @@ function wireEvents() {
 
     // Rest day toggle
     if (e.target.closest("#restToggle")) { toggleRestDay(DB, todayKey()); render(); return; }
+
+    // ---- Learn Punjabi ----
+    const learnTab = e.target.closest("[data-learn]");
+    if (learnTab) { _learnTab = learnTab.dataset.learn; renderLearn(DB); return; }
+
+    const speak = e.target.closest("[data-speak]");
+    if (speak) { const w = wordById(DB, speak.dataset.speak); if (w) speakPunjabi(w.pa || w.rom); return; }
+
+    const editWord = e.target.closest("[data-edit-word]");
+    if (editWord) { openWordModal(DB, editWord.dataset.editWord); return; }
+
+    if (e.target.closest("[data-flip]")) { _cardFlipped = !_cardFlipped; renderLearn(DB); return; }
+    if (e.target.closest("[data-next-card]")) {
+      _cardFlipped = false; _cardIdx = (_cardIdx + 1) % Math.max(1, DB.punjabi.words.length); renderLearn(DB); return;
+    }
+    if (e.target.closest("[data-shuffle]")) {
+      _cardFlipped = false; _cardIdx = Math.floor((performance.now() * 7) % Math.max(1, DB.punjabi.words.length)); renderLearn(DB); return;
+    }
+    if (e.target.closest("[data-learn-add]")) {
+      const en = document.getElementById("wEn").value.trim();
+      const pa = document.getElementById("wPa").value.trim();
+      const rom = document.getElementById("wRom").value.trim();
+      if (!en && !pa) { document.getElementById("wEn").focus(); return; }
+      addWord(DB, { en, pa, rom });
+      _learnTab = "words"; render();
+      return;
+    }
+    if (e.target.closest("[data-learn-import]")) {
+      const n = importWords(DB, document.getElementById("wImport").value);
+      const status = document.getElementById("importStatus");
+      if (status) status.textContent = n ? `Added ${n} word${n > 1 ? "s" : ""}. ✓` : "Nothing to import — check the format.";
+      if (n) { _learnTab = "words"; render(); }
+      return;
+    }
 
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
