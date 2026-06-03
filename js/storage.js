@@ -174,6 +174,13 @@ function applySeedAdditions(db) {
           steps: ["2 mins — stick a song or a video on to beat the boredom"] },
       ],
     },
+    {
+      key: "feedDogs",
+      routines: [
+        { title: "Feed dogs", assignedTo: "jack", timeOfDay: "evening", repeat: "daily",
+          steps: ["Usually Jack — Kirsten on her days off"] },
+      ],
+    },
   ];
   additions.forEach((a) => {
     if (db.appliedSeeds[a.key]) return;
