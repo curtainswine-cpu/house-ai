@@ -74,8 +74,9 @@ function calAuth() { return { Authorization: "Bearer " + _calToken }; }
 async function fetchWeekEvents() {
   if (!calendarConnected()) return;
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(start); end.setDate(start.getDate() + 7);
+  // From yesterday → +7 days (yesterday lets us spot "post-night" mornings).
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()); end.setDate(end.getDate() + 7);
   const tMin = encodeURIComponent(start.toISOString());
   const tMax = encodeURIComponent(end.toISOString());
   try {
@@ -166,6 +167,64 @@ function renderTodayCalendar(db) {
       <div id="calWeek" hidden>${weekHTML}</div>
       ${_calStatus ? `<div class="sts__status">${escapeHTML(_calStatus)}</div>` : ""}
     </div>`;
+}
+
+/* ============================================================
+   Shift-aware Today — work out what KIND of day it is from the
+   calendar, so JARVIS can set the tone (light on long days, rest
+   after nights, gym/projects on days off).
+   ============================================================ */
+function classifyShift(summary) {
+  const s = (summary || "").toLowerCase();
+  if (/annual leave|a\/l\b|holiday/.test(s)) return "annualleave";
+  if (/night/.test(s)) return "night";
+  if (/long day|long-day|longday/.test(s)) return "longday";
+  if (/early/.test(s)) return "early";
+  if (/\blate\b/.test(s)) return "late";
+  if (/ward|shift|on call|day shift/.test(s)) return "work";
+  return null;
+}
+function eventsOn(db, dateKey) {
+  return (db.calendar.lastEvents || [])
+    .filter((e) => (e.allDay ? e.start : todayKey(new Date(e.start))) === dateKey);
+}
+/* Returns {type, start?, allDay?} or null if we shouldn't guess. */
+function todayShift(db) {
+  if (!db.calendar.connectedOnce) return null; // don't claim "day off" before we have data
+  const tk = todayKey();
+  for (const e of eventsOn(db, tk)) {
+    const t = classifyShift(e.summary);
+    if (t) return { type: t, start: e.start, allDay: e.allDay };
+  }
+  const yk = todayKey(new Date(Date.now() - 86400000));
+  for (const e of eventsOn(db, yk)) {
+    if (classifyShift(e.summary) === "night") return { type: "postnight" };
+  }
+  return { type: "off" };
+}
+
+function renderShiftBanner(db) {
+  const wrap = document.getElementById("shiftBanner");
+  if (!wrap) return;
+  const s = todayShift(db);
+  if (!s) { wrap.innerHTML = ""; return; }
+
+  const t = (s.start && !s.allDay)
+    ? " from " + new Date(s.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : "";
+  const C = {
+    longday:     ["shift--work", "💪", `Long day today${t}. A big one — I've kept things light. Just the essentials; the rest can wait.`],
+    early:       ["shift--work", "🌅", `Early shift today${t}. Keep this morning simple.`],
+    late:        ["shift--work", "🌆", `Late shift today${t}.`],
+    work:        ["shift--work", "🏥", `Working today${t}. Be gentle with yourself around your shift.`],
+    night:       ["shift--night", "🌙", `Night shift tonight${t}. Take it easy today and rest up before you go in.`],
+    postnight:   ["shift--night", "😴", `Post-night — rest and recover. Nothing's expected of you this morning. 💙`],
+    annualleave: ["shift--off", "🏖️", `Annual leave — enjoy it. 💙`],
+    off:         ["shift--off", "🎉", `Day off — a good one for the gym, a laundry step, or simply resting.`],
+  };
+  const [cls, emoji, msg] = C[s.type] || ["", "", ""];
+  if (!msg) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `<div class="shift-banner ${cls}">${emoji} ${msg}</div>`;
 }
 
 /* ---- Setup modal: paste the OAuth Client ID ---- */

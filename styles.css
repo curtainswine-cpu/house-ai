@@ -252,6 +252,15 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   background: var(--surface-2); padding: 2px 6px; border-radius: 6px; word-break: break-all;
 }
 
+/* ---------- Shift-aware banner ---------- */
+.shift-banner {
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+  line-height: 1.4; border: 1px solid var(--line); background: var(--surface);
+}
+.shift-banner.shift--work  { background: var(--gold-soft);   border-color: var(--gold); }
+.shift-banner.shift--night { background: rgba(108,123,176,.16); border-color: #6c7bb0; }
+.shift-banner.shift--off   { background: var(--accent-soft); border-color: var(--accent); }
+
 /* ---------- Rest ("do nothing") day ---------- */
 #restToggle[aria-pressed="true"] {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent);

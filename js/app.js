@@ -82,6 +82,7 @@ function render() {
     : prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
     : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
     : `${prog.done} of ${prog.total} done — one thing at a time.`;
+  renderShiftBanner(DB);
   renderTodayCalendar(DB);
   renderTodayRoutines(DB);
   renderTodayProjects(DB);

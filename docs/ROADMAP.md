@@ -20,6 +20,8 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [x] **Live Google Calendar** (read-only, OAuth) — today's schedule + this week on the
       Today screen. Setup: [docs/GOOGLE-CALENDAR-SETUP.md](GOOGLE-CALENDAR-SETUP.md)
 - [ ] "Well done" streaks / gentle encouragement
+- [x] **Shift-aware Today** — reads the day's shift from the calendar (Long Day / Night /
+      post-night / day off / annual leave) and sets the tone with a calm banner
 - [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)
 - [ ] Don't surface morning nudges before ~9:30 (Kirsten's preferred wake time)
