@@ -92,7 +92,11 @@ function defaultData() {
     trackers: {}, // key: "YYYY-MM-DD" -> { waterMl, steps }
 
     // Gentle, guilt-free extras.
-    gym: { perWeek: 2, sessions: [] }, // sessions = ["YYYY-MM-DD", ...]
+    gym: {
+      perWeek: 2, sessions: [], // sessions = ["YYYY-MM-DD", ...]
+      place: "TruGym, Huddersfield",
+      hours: { weekday: "05:00–23:00", weekend: "06:00–22:00" }, // editable if they change
+    },
     restDays: {},                      // "YYYY-MM-DD" -> true (a chosen do-nothing day)
     appliedSeeds: {},                  // one-time seed additions already applied
 
@@ -144,6 +148,8 @@ function normalize(db) {
   if (!db.gym || typeof db.gym !== "object") db.gym = d.gym;
   if (db.gym.perWeek == null) db.gym.perWeek = d.gym.perWeek;
   if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];
+  if (!db.gym.place) db.gym.place = d.gym.place;
+  if (!db.gym.hours) db.gym.hours = d.gym.hours;
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
   db.calendar = Object.assign({}, d.calendar, db.calendar || {});

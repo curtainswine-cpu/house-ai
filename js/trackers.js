@@ -69,6 +69,12 @@ function undoGymToday(db) {
   saveDB(db);
 }
 
+function gymHoursToday(db) {
+  const h = db.gym.hours || {};
+  const wknd = [0, 6].includes(new Date().getDay());
+  return wknd ? h.weekend : h.weekday;
+}
+
 function renderTodayGym(db) {
   const wrap = document.getElementById("todayGym");
   const count = gymThisWeek(db);
@@ -78,6 +84,11 @@ function renderTodayGym(db) {
   const note = count === 0 ? "Ease back in — one session counts."
     : hit ? "Goal smashed this week. 💪"
     : "Nice — keep it gentle.";
+  const place = db.gym.place ? `${escapeHTML(db.gym.place)}` : "";
+  const hrs = gymHoursToday(db);
+  const openLine = (place || hrs)
+    ? `<div class="goal__hint">📍 ${place}${hrs ? ` · open today ${hrs}` : ""}</div>`
+    : "";
   wrap.innerHTML = `
     <div class="goals">
       <div class="goals__head">Gym · this week</div>
@@ -88,6 +99,7 @@ function renderTodayGym(db) {
         </div>
         <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pct(count, goal)}%"></div></div>
         <div class="goal__hint">${note}</div>
+        ${openLine}
         <div class="goal__actions">
           ${loggedToday
             ? `<button class="btn btn--mini btn--quiet" data-gym-undo>Logged today — undo</button>`
