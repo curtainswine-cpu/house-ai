@@ -7,6 +7,10 @@
 
 const STORAGE_KEY = "houseai.v1";
 
+/* Kirsten's Google OAuth Web client ID (public + locked to the GitHub Pages
+   origin, so safe to ship). Pre-configures the live calendar. */
+const DEFAULT_CALENDAR_CLIENT_ID = "1070575707230-frs2bctfil1q6f05j92uic1u6s4i1i2h.apps.googleusercontent.com";
+
 /* Default data the very first time the app is opened. */
 function defaultData() {
   return {
@@ -102,9 +106,10 @@ function defaultData() {
 
     // Live Google Calendar (read-only). clientId = her OAuth Web client ID.
     calendar: {
-      clientId: "",      // safe to store (public, origin-restricted)
+      clientId: DEFAULT_CALENDAR_CLIENT_ID, // safe to store (public, origin-restricted)
       lastEvents: [],    // cached events so today's plan shows instantly/offline
       lastFetched: null,
+      connectedOnce: false, // only auto-refresh after she's signed in once
     },
   };
 }
@@ -126,6 +131,7 @@ function normalize(db) {
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
   db.calendar = Object.assign({}, d.calendar, db.calendar || {});
+  if (!db.calendar.clientId) db.calendar.clientId = DEFAULT_CALENDAR_CLIENT_ID; // reaches older installs too
   if (!Array.isArray(db.calendar.lastEvents)) db.calendar.lastEvents = [];
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data

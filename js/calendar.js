@@ -33,6 +33,8 @@ function ensureTokenClient(db) {
         _calToken = resp.access_token;
         _calTokenExp = Date.now() + (Number(resp.expires_in || 3600) * 1000) - 60000;
         _calStatus = "";
+        DB.calendar.connectedOnce = true; // from now on, refresh quietly on load
+        saveDB(DB);
         fetchWeekEvents().then(() => render());
       } else if (resp && resp.error && resp.error !== "interaction_required") {
         _calStatus = "Couldn't sign in to Google.";
@@ -54,7 +56,8 @@ function connectCalendar(db) {
 
 /* Quiet refresh on load — no popup; only works if already consented. */
 function calendarBootstrap(db, attempt) {
-  if (!calendarConfigured(db)) return;
+  // Only auto-reach Google once she's connected at least once — no nag before.
+  if (!calendarConfigured(db) || !db.calendar.connectedOnce) return;
   attempt = attempt || 0;
   if (gisReady()) {
     ensureTokenClient(db);
