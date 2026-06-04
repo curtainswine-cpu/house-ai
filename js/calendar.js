@@ -66,11 +66,17 @@ function restoreCalToken(db) {
   return false;
 }
 
-/* On load: if we still have a valid token, just fetch (no Google round-trip).
-   Otherwise refresh quietly — no popup; only works if already consented. */
+const CAL_REFRESH_MS = 6 * 60 * 60 * 1000; // only re-check Google every ~6 hours
+
+/* On load: show the saved calendar. Only contact Google if the saved copy is
+   more than ~6 hours old — so logins are needed at most every 6 hours (and
+   usually not even then, as the refresh is silent). */
 function calendarBootstrap(db, attempt) {
   // Only auto-reach Google once she's connected at least once — no nag before.
   if (!calendarConfigured(db) || !db.calendar.connectedOnce) return;
+  // Saved copy still recent enough? Then don't touch Google at all.
+  if (db.calendar.lastFetched && (Date.now() - db.calendar.lastFetched) < CAL_REFRESH_MS) return;
+  // Stale → refresh, reusing a valid token if we still have one.
   if (restoreCalToken(db)) { fetchWeekEvents().then(() => render()); return; }
   attempt = attempt || 0;
   if (gisReady()) {
