@@ -96,14 +96,7 @@ function formatAgo(ts) {
 function renderTodayMoney(db) {
   const wrap = document.getElementById("todayMoney");
   if (!db.finance.csvUrl && !db.finance.sheetUrl) {
-    wrap.innerHTML = `
-      <div class="money-card money-card--prompt">
-        <div>
-          <div class="money-card__label">Money</div>
-          <div class="money-card__hint">Connect your Finances Tracker to see Safe-to-Spend here.</div>
-        </div>
-        <button class="btn btn--ghost" data-goto="money">Connect</button>
-      </div>`;
+    wrap.innerHTML = ""; // not connected → keep Today calm (set it up in the Money tab)
     return;
   }
   wrap.innerHTML = `

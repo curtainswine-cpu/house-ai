@@ -75,77 +75,41 @@ function gymHoursToday(db) {
   return wknd ? h.weekend : h.weekday;
 }
 
-function renderTodayGym(db) {
-  const wrap = document.getElementById("todayGym");
-  const count = gymThisWeek(db);
-  const goal = db.gym.perWeek;
-  const loggedToday = db.gym.sessions.includes(todayKey());
-  const hit = count >= goal;
-  const note = count === 0 ? "Ease back in — one session counts."
-    : hit ? "Goal smashed this week. 💪"
-    : "Nice — keep it gentle.";
-  const place = db.gym.place ? `${escapeHTML(db.gym.place)}` : "";
-  const hrs = gymHoursToday(db);
-  const openLine = (place || hrs)
-    ? `<div class="goal__hint">📍 ${place}${hrs ? ` · open today ${hrs}` : ""}</div>`
-    : "";
-  wrap.innerHTML = `
-    <div class="goals">
-      <div class="goals__head">Gym · this week</div>
-      <div class="goal">
-        <div class="goal__row">
-          <span class="goal__name">💪 Sessions ${hit ? "✓" : ""}</span>
-          <span class="goal__val">${count} / ${goal}</span>
-        </div>
-        <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pct(count, goal)}%"></div></div>
-        <div class="goal__hint">${note}</div>
-        ${openLine}
-        <div class="goal__actions">
-          ${loggedToday
-            ? `<button class="btn btn--mini btn--quiet" data-gym-undo>Logged today — undo</button>`
-            : `<button class="btn btn--mini" data-gym>I went to the gym 💪</button>`}
-        </div>
-      </div>
-    </div>`;
-}
-
-/* ---- Render the Today "Daily goals" card ---- */
-function renderTodayGoals(db) {
-  const wrap = document.getElementById("todayGoals");
+/* ---- One slim "At a glance" card: water, steps, gym ---- */
+function renderTodayHealth(db) {
+  const wrap = document.getElementById("todayHealth");
+  if (!wrap) return;
   const t = trackerFor(db, todayKey());
   const g = db.goals;
+  const gymCount = gymThisWeek(db);
+  const loggedGymToday = db.gym.sessions.includes(todayKey());
 
-  const waterPct = pct(t.waterMl, g.waterMl);
-  const stepsPct = pct(t.steps, g.steps);
-  const waterDone = t.waterMl >= g.waterMl;
-  const stepsDone = t.steps >= g.steps;
+  const row = (emoji, label, value, pctVal, gold, actions, hint) => `
+    <div class="glance">
+      <div class="glance__top">
+        <span class="glance__label">${emoji} ${label}</span>
+        <span class="glance__val">${value}</span>
+      </div>
+      <div class="bar"><div class="bar__fill ${gold ? "bar__fill--gold" : ""}" style="width:${pctVal}%"></div></div>
+      ${hint ? `<div class="glance__hint">${hint}</div>` : ""}
+      <div class="glance__actions">${actions}</div>
+    </div>`;
+
+  const gymHrs = gymHoursToday(db);
+  const gymHint = db.gym.place ? `📍 ${escapeHTML(db.gym.place)}${gymHrs ? ` · open today ${gymHrs}` : ""}` : "";
 
   wrap.innerHTML = `
-    <div class="goals">
-      <div class="goals__head">Daily goals</div>
-
-      <div class="goal">
-        <div class="goal__row">
-          <span class="goal__name">💧 Water ${waterDone ? "✓" : ""}</span>
-          <span class="goal__val">${litres(t.waterMl)} / ${litres(g.waterMl)} L</span>
-        </div>
-        <div class="bar"><div class="bar__fill" style="width:${waterPct}%"></div></div>
-        <div class="goal__actions">
-          <button class="btn btn--mini" data-water="${g.glassMl}">+ ${g.glassMl} ml</button>
-          <button class="btn btn--mini" data-water-add>+ Add…</button>
-          <button class="btn btn--mini btn--quiet" data-water="${-g.glassMl}">− ${g.glassMl}</button>
-        </div>
-      </div>
-
-      <div class="goal">
-        <div class="goal__row">
-          <span class="goal__name">👟 Steps ${stepsDone ? "✓" : ""}</span>
-          <span class="goal__val">${t.steps.toLocaleString()} / ${g.steps.toLocaleString()}</span>
-        </div>
-        <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${stepsPct}%"></div></div>
-        <div class="goal__actions">
-          <button class="btn btn--mini" data-steps-edit>Update from watch</button>
-        </div>
-      </div>
+    <div class="glance-card">
+      ${row("💧", "Water", `${litres(t.waterMl)} / ${litres(g.waterMl)} L`, pct(t.waterMl, g.waterMl), false,
+        `<button class="btn btn--mini" data-water="${g.glassMl}">+ ${g.glassMl}</button>
+         <button class="btn btn--mini btn--quiet" data-water-add>more…</button>
+         <button class="btn btn--mini btn--quiet" data-water="${-g.glassMl}">−</button>`)}
+      ${row("👟", "Steps", `${t.steps.toLocaleString()} / ${g.steps.toLocaleString()}`, pct(t.steps, g.steps), true,
+        `<button class="btn btn--mini btn--quiet" data-steps-edit>update</button>`)}
+      ${row("💪", "Gym this week", `${gymCount} / ${db.gym.perWeek}`, pct(gymCount, db.gym.perWeek), true,
+        loggedGymToday
+          ? `<button class="btn btn--mini btn--quiet" data-gym-undo>logged ✓ · undo</button>`
+          : `<button class="btn btn--mini btn--quiet" data-gym>log a session</button>`,
+        gymHint)}
     </div>`;
 }

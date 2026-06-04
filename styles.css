@@ -132,8 +132,41 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   border-radius: 10px; font-size: 1.1rem; color: var(--muted);
 }
 
+/* ---------- Section labels (calm organisers on Today) ---------- */
+.section-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 26px 2px 10px;
+}
+.section-label:first-of-type { margin-top: 18px; }
+
 /* ---------- Cards ---------- */
-.card-list { display: flex; flex-direction: column; gap: 10px; }
+.card-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Time-of-day mini headers within the task list */
+.time-group {
+  font-size: .82rem; font-weight: 650; color: var(--accent);
+  margin: 12px 2px 2px; opacity: .85;
+}
+.time-group:first-child { margin-top: 0; }
+
+/* Compact task rows on Today — lighter, calmer */
+.routine--compact { padding: 11px 14px; box-shadow: none; align-items: center; }
+.glance__hint { font-size: .78rem; color: var(--muted); margin-top: 6px; }
+.routine--compact .card__meta { margin-top: 5px; }
+.steps-toggle {
+  margin-top: 8px; padding: 2px 0; background: none; border: none;
+  color: var(--accent); font-weight: 600; font-size: .85rem;
+}
+
+/* Slim "At a glance" card */
+.glance-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px;
+}
+.glance__top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.glance__label { font-weight: 600; font-size: .95rem; }
+.glance__val { font-family: var(--mono); font-size: .82rem; color: var(--muted); }
+.glance__actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .card {
   display: flex; align-items: flex-start; gap: 12px;
   background: var(--surface); border: 1px solid var(--line);

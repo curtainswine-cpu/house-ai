@@ -74,26 +74,45 @@ function whoTag(db, assignedTo) {
   return `<span class="tag tag--person" style="--person-colour:${p.colour}">${p.name}</span>`;
 }
 
+/* Which routine cards currently have their steps expanded (Today screen). */
+const _expandedRoutines = new Set();
+
 /* ---- Render a single routine card ---- */
 function routineCardHTML(db, r, dateKey, opts = {}) {
   const done = isDone(db, r.id, dateKey);
-  const steps = (opts.showSteps && r.steps && r.steps.length)
-    ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>`
-    : "";
+  const hasSteps = r.steps && r.steps.length;
+
+  let stepsBlock = "";
+  if (hasSteps) {
+    if (opts.compact) {
+      // Collapsed by default — a calm one-liner you can tap to open.
+      const open = _expandedRoutines.has(r.id);
+      const list = open
+        ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>`
+        : "";
+      stepsBlock = `
+        <button class="steps-toggle" data-steps-toggle="${r.id}">
+          ${open ? "▾ hide steps" : `▸ ${r.steps.length} step${r.steps.length > 1 ? "s" : ""}`}
+        </button>${list}`;
+    } else if (opts.showSteps) {
+      stepsBlock = `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>`;
+    }
+  }
+
   const editBtn = opts.editable
     ? `<button class="icon-btn" data-edit-routine="${r.id}" aria-label="Edit routine">✎</button>`
     : "";
+
   return `
-    <article class="card routine ${done ? "is-done" : ""}" data-routine="${r.id}">
+    <article class="card routine ${done ? "is-done" : ""} ${opts.compact ? "routine--compact" : ""}" data-routine="${r.id}">
       <button class="check" data-toggle="${r.id}" aria-label="Mark done">✓</button>
       <div class="card__main">
         <div class="card__title">${escapeHTML(r.title)}</div>
         <div class="card__meta">
           ${whoTag(db, r.assignedTo)}
-          <span class="tag tag--time">${TIME_LABEL[r.timeOfDay] || "Anytime"}</span>
-          <span class="tag">${REPEAT_LABEL[r.repeat] || "Daily"}</span>
+          ${opts.compact ? "" : `<span class="tag tag--time">${TIME_LABEL[r.timeOfDay] || "Anytime"}</span>`}
         </div>
-        ${steps}
+        ${stepsBlock}
       </div>
       ${editBtn}
     </article>`;
@@ -129,10 +148,17 @@ function renderTodayRoutines(db) {
   const due = routinesForToday(db, date);
 
   if (!due.length) {
-    wrap.innerHTML = emptyState("✨", "Nothing scheduled", "Enjoy the calm — or add a routine.");
+    wrap.innerHTML = emptyState("✨", "Nothing to do", "Enjoy the calm.");
     return;
   }
-  wrap.innerHTML = due.map((r) => routineCardHTML(db, r, dateKey, { showSteps: true })).join("");
+  // Group by time of day so it reads as Morning / Afternoon / Evening, not a pile.
+  let html = "", lastGroup = null;
+  due.forEach((r) => {
+    const g = r.timeOfDay || "anytime";
+    if (g !== lastGroup) { html += `<div class="time-group">${TIME_LABEL[g] || "Anytime"}</div>`; lastGroup = g; }
+    html += routineCardHTML(db, r, dateKey, { compact: true });
+  });
+  wrap.innerHTML = html;
 }
 
 /* Count of done / total for today, used in the summary line. */

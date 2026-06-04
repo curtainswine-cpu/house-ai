@@ -83,11 +83,10 @@ function render() {
     : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
     : `${prog.done} of ${prog.total} done — one thing at a time.`;
   renderShiftBanner(DB);
-  renderTodayCalendar(DB);
   renderTodayRoutines(DB);
   renderTodayProjects(DB);
-  renderTodayGoals(DB);
-  renderTodayGym(DB);
+  renderTodayCalendar(DB);
+  renderTodayHealth(DB);
   renderTodayMoney(DB);
 
   // Other views
@@ -335,6 +334,16 @@ function wireEvents() {
     const toggle = e.target.closest("[data-toggle]");
     if (toggle) {
       toggleDone(DB, toggle.dataset.toggle, todayKey());
+      render();
+      return;
+    }
+
+    // Expand/collapse a routine's steps on Today
+    const stepsToggle = e.target.closest("[data-steps-toggle]");
+    if (stepsToggle) {
+      const id = stepsToggle.dataset.stepsToggle;
+      if (_expandedRoutines.has(id)) _expandedRoutines.delete(id);
+      else _expandedRoutines.add(id);
       render();
       return;
     }

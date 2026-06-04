@@ -22,6 +22,9 @@ A local app that runs by opening `index.html`. No accounts, data saved in-browse
 - [ ] "Well done" streaks / gentle encouragement
 - [x] **Shift-aware Today** — reads the day's shift from the calendar (Long Day / Night /
       post-night / day off / annual leave) and sets the tone with a calm banner
+- [x] **Decluttered Today** (Kirsten said it felt busy/unorganised): clear sections
+      (To do / Your day / At a glance), tasks grouped by Morning/Evening with steps
+      collapsed, water+steps+gym merged into one slim card, money hidden until connected
 - [ ] Auto-pull steps from Samsung Health (Galaxy Watch 4) instead of typing them
 - [ ] Watch-charge reminder that's smarter about work days (ties to NHS rota in Loop)
 - [ ] Don't surface morning nudges before ~9:30 (Kirsten's preferred wake time)
