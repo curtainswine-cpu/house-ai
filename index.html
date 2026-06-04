@@ -39,33 +39,43 @@
   <!-- ============ MAIN VIEWS ============ -->
   <main id="main">
 
-    <!-- ---- HOME (a simple snapshot of your day) ---- -->
+    <!-- ---- HOME: a calm hub — shift, calendar, navigation ---- -->
     <section id="view-today" class="view" data-view="today">
       <div class="view__head">
         <h2>Today</h2>
         <button class="btn btn--mini" id="restToggle">🌙 Rest day</button>
       </div>
-      <p class="view__sub" id="todaySummary">—</p>
 
       <div id="shiftBanner"></div>
       <div id="restBanner"></div>
 
-      <h3 class="section-label">Your tasks</h3>
-      <div id="todayRoutines" class="card-list"></div>
-      <div id="todayProjects"></div>
-      <div id="todayHousehold"></div>
-
       <h3 class="section-label">Your day</h3>
       <div id="todayCalendar"></div>
+
+      <h3 class="section-label">Go to</h3>
+      <div id="homeNav" class="nav-grid"></div>
+    </section>
+
+    <!-- ---- MINI MISSIONS: your personal tasks ---- -->
+    <section id="view-tasks" class="view" data-view="tasks" hidden>
+      <div class="view__head">
+        <h2 id="tasksTitle">Mini missions</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
+      </div>
+      <p class="view__sub" id="todaySummary">—</p>
+      <div id="todayRoutines" class="card-list"></div>
+      <div id="todayProjects"></div>
     </section>
 
     <!-- ---- CLEANING & CHORES (shared) ---- -->
     <section id="view-cleaning" class="view" data-view="cleaning" hidden>
       <div class="view__head">
         <h2>Cleaning &amp; chores</h2>
-        <button class="btn btn--primary" id="addCleaningBtn">+ New</button>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
-      <p class="view__sub" style="margin:0 0 12px">Shared household jobs — you both see these.</p>
+      <div class="head-actions" style="margin-bottom:12px">
+        <button class="btn btn--primary" id="addCleaningBtn">+ New job</button>
+      </div>
       <div id="cleaningList" class="card-list"></div>
     </section>
 
@@ -73,6 +83,7 @@
     <section id="view-food" class="view" data-view="food" hidden>
       <div class="view__head">
         <h2>Fridge &amp; Freezer</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
       <div id="foodBody"></div>
     </section>
@@ -81,24 +92,20 @@
     <section id="view-health" class="view" data-view="health" hidden>
       <div class="view__head">
         <h2>Health</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
       <div id="todayHealth"></div>
     </section>
 
-    <!-- ---- MORE ---- -->
-    <section id="view-more" class="view" data-view="more" hidden>
-      <div class="view__head"><h2>More</h2></div>
-      <div class="more-links">
-        <button class="more-link" data-goto="learn">📚 <span>Learn Punjabi</span> <span class="more-link__go">›</span></button>
-        <button class="more-link" data-goto="money">💷 <span>Money</span> <span class="more-link__go">›</span></button>
+    <!-- ---- MANAGE: routines + projects ---- -->
+    <section id="view-manage" class="view" data-view="manage" hidden>
+      <div class="view__head">
+        <h2>Routines</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
-
-      <div class="subhead-row">
-        <h3>Your routines</h3>
-        <div class="head-actions">
-          <button class="btn btn--mini" id="suggestRoutinesBtn">Suggestions</button>
-          <button class="btn btn--primary" id="addRoutineBtn">+ New</button>
-        </div>
+      <div class="head-actions" style="margin-bottom:12px">
+        <button class="btn btn--mini" id="suggestRoutinesBtn">Suggestions</button>
+        <button class="btn btn--primary" id="addRoutineBtn">+ New</button>
       </div>
       <div id="routinesList" class="card-list"></div>
 
@@ -106,24 +113,24 @@
         <h3>Projects</h3>
         <button class="btn btn--mini" id="addProjectBtn">+ New</button>
       </div>
-      <p class="view__sub" style="margin:0 0 12px">Big stuck tasks, broken into steps — only the next one shows on Home.</p>
+      <p class="view__sub" style="margin:0 0 12px">Big stuck tasks, broken into steps — only the next one shows in Mini missions.</p>
       <div id="projectsList" class="card-list"></div>
     </section>
 
-    <!-- ---- MONEY (reached from More) ---- -->
+    <!-- ---- MONEY ---- -->
     <section id="view-money" class="view" data-view="money" hidden>
       <div class="view__head">
         <h2>Money</h2>
-        <button class="btn btn--mini" data-goto="more">‹ More</button>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
       <div id="moneyView"></div>
     </section>
 
-    <!-- ---- LEARN PUNJABI (reached from More) ---- -->
+    <!-- ---- LEARN PUNJABI ---- -->
     <section id="view-learn" class="view" data-view="learn" hidden>
       <div class="view__head">
         <h2>Learn Punjabi</h2>
-        <button class="btn btn--mini" data-goto="more">‹ More</button>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
       <div class="seg" id="learnTabs" role="tablist">
         <button class="seg__btn is-active" data-learn="words">Words</button>
@@ -135,25 +142,6 @@
     </section>
 
   </main>
-
-  <!-- ============ BOTTOM NAV ============ -->
-  <nav class="tabbar" aria-label="Main sections">
-    <button class="tab is-active" data-goto="today">
-      <span class="tab__icon">🏠</span><span class="tab__label">Home</span>
-    </button>
-    <button class="tab" data-goto="cleaning">
-      <span class="tab__icon">🧹</span><span class="tab__label">Cleaning</span>
-    </button>
-    <button class="tab" data-goto="food">
-      <span class="tab__icon">❄️</span><span class="tab__label">Food</span>
-    </button>
-    <button class="tab" data-goto="health">
-      <span class="tab__icon">💗</span><span class="tab__label">Health</span>
-    </button>
-    <button class="tab" data-goto="more">
-      <span class="tab__icon">⋯</span><span class="tab__label">More</span>
-    </button>
-  </nav>
 
   <!-- ============ MODAL (shared) ============ -->
   <div id="modalRoot" class="modal-root" hidden>

@@ -54,6 +54,38 @@ function timeGreeting() {
   return "Good evening";
 }
 
+/* What the personal-tasks page is called (Kirsten chose this). */
+const TASKS_NAME = "Mini missions";
+
+/* ---------- Home hub: navigation tiles with a calm count ---------- */
+function renderHomeNav(db) {
+  const wrap = document.getElementById("homeNav");
+  if (!wrap) return;
+  const date = new Date(), dateKey = todayKey(date);
+  const prog = todayProgress(db);
+  const chores = sharedChoresToday(db, date);
+  const choresDone = chores.filter((r) => isDone(db, r.id, dateKey)).length;
+  const soon = foodUseSoon(db).length;
+
+  const tiles = [
+    { view: "tasks", icon: "📋", label: TASKS_NAME, sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
+    { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
+    { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
+    { view: "health", icon: "💗", label: "Health", sub: "water · steps · gym" },
+    { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
+    { view: "manage", icon: "🔁", label: "Routines", sub: "manage" },
+  ];
+  if (db.finance.csvUrl || db.finance.sheetUrl) {
+    tiles.push({ view: "money", icon: "💷", label: "Money", sub: "safe-to-spend" });
+  }
+  wrap.innerHTML = tiles.map((t) => `
+    <button class="nav-tile" data-goto="${t.view}">
+      <span class="nav-tile__icon">${t.icon}</span>
+      <span class="nav-tile__label">${t.label}</span>
+      <span class="nav-tile__sub">${t.sub}</span>
+    </button>`).join("");
+}
+
 /* ---------- Render everything (cheap; data is small) ---------- */
 function render() {
   const now = new Date();
@@ -78,25 +110,28 @@ function render() {
        Tick things only if you genuinely want to.</div>`
     : "";
 
-  // Today — JARVIS speaks the status calmly, never naggy
+  // Mini missions page — calm status line for your personal tasks
   const prog = todayProgress(DB);
+  document.getElementById("tasksTitle").textContent = TASKS_NAME;
   document.getElementById("todaySummary").textContent =
     rest ? "A day for you. Be kind to yourself. 💙"
     : prog.total === 0 ? "Nothing personal on today. Enjoy the quiet."
     : prog.done === prog.total ? `All ${prog.total} done. Nicely done.`
     : `${prog.done} of ${prog.total} done — one thing at a time.`;
-  renderShiftBanner(DB);
-  renderTodayRoutines(DB);   // Home: my personal tasks
-  renderTodayProjects(DB);
-  renderTodayHousehold(DB);  // Home: quiet "household jobs today" line
-  renderTodayCalendar(DB);
 
-  // Other tabs
-  renderCleaning(DB);        // Cleaning tab
-  renderFood(DB);            // Food tab
-  renderTodayHealth(DB);     // Health tab (water/steps/gym)
-  renderRoutinesView(DB);    // More → your routines
-  renderProjectsManager(DB); // More → projects
+  // Home (calm hub)
+  renderShiftBanner(DB);
+  renderTodayCalendar(DB);
+  renderHomeNav(DB);
+
+  // The other pages
+  renderTodayRoutines(DB);   // Mini missions: my personal tasks
+  renderTodayProjects(DB);   // Mini missions: project next-steps
+  renderCleaning(DB);        // Cleaning
+  renderFood(DB);            // Food
+  renderTodayHealth(DB);     // Health
+  renderRoutinesView(DB);    // Manage → routines
+  renderProjectsManager(DB); // Manage → projects
   renderMoneyView(DB);       // More → Money
   renderLearn(DB);           // More → Learn
 }

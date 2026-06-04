@@ -54,7 +54,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-body { max-width: 680px; margin: 0 auto; padding-bottom: 88px; }
+body { max-width: 680px; margin: 0 auto; padding-bottom: 32px; }
 
 h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
 button { font-family: inherit; font-size: inherit; cursor: pointer; }
@@ -131,6 +131,20 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   width: var(--tap); height: var(--tap); border: none; background: transparent;
   border-radius: 10px; font-size: 1.1rem; color: var(--muted);
 }
+
+/* ---------- Home hub: navigation tiles ---------- */
+.nav-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.nav-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); min-height: 92px; text-align: left;
+}
+.nav-tile:active { transform: translateY(1px); }
+.nav-tile__icon { font-size: 1.5rem; }
+.nav-tile__label { font-weight: 650; margin-top: 4px; }
+.nav-tile__sub { font-size: .78rem; color: var(--muted); }
 
 /* ---------- Household line on Home + More menu ---------- */
 .household-line {
