@@ -54,11 +54,22 @@ function toggleDone(db, routineId, dateKey) {
   saveDB(db);
 }
 
-/* Routines that should appear today, sorted by time of day. */
+function byTime(a, b) { return (TIME_ORDER[a.timeOfDay] ?? 9) - (TIME_ORDER[b.timeOfDay] ?? 9); }
+function isSharedTask(r) { return r.area === "cleaning" || r.area === "household"; }
+
+/* All due routines (used by the manage list). */
 function routinesForToday(db, date) {
+  return db.routines.filter((r) => isRoutineDue(r, date)).sort(byTime);
+}
+/* MY personal tasks due today (Home screen) — yours + shown to you only. */
+function personalTasksToday(db, date) {
   return db.routines
-    .filter((r) => isRoutineDue(r, date))
-    .sort((a, b) => (TIME_ORDER[a.timeOfDay] ?? 9) - (TIME_ORDER[b.timeOfDay] ?? 9));
+    .filter((r) => r.area === "me" && r.assignedTo === db.activePerson && isRoutineDue(r, date))
+    .sort(byTime);
+}
+/* Shared household chores due today (cleaning + household), for both of you. */
+function sharedChoresToday(db, date) {
+  return db.routines.filter((r) => isSharedTask(r) && isRoutineDue(r, date)).sort(byTime);
 }
 
 function personById(db, id) {
@@ -127,45 +138,83 @@ function deleteRoutine(db, id) {
   saveDB(db);
 }
 
-/* ---- Render the full Routines view ---- */
+/* ---- More → "Your routines": personal ones only (chores live in Cleaning) ---- */
 function renderRoutinesView(db) {
   const list = document.getElementById("routinesList");
-  if (!db.routines.length) {
-    list.innerHTML = emptyState("🔁", "No routines yet", "Add the things you do regularly — meds, kitchen reset, bins.");
+  if (!list) return;
+  const mine = db.routines.filter((r) => r.area === "me");
+  if (!mine.length) {
+    list.innerHTML = emptyState("🔁", "No personal routines", "Add things like meds, watch, teeth.");
     return;
   }
   const dateKey = todayKey();
-  list.innerHTML = db.routines
-    .map((r) => routineCardHTML(db, r, dateKey, { showSteps: true, editable: true }))
+  list.innerHTML = mine
+    .map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true }))
     .join("");
 }
 
-/* ---- Render today's routines (dashboard) ---- */
-function renderTodayRoutines(db) {
-  const wrap = document.getElementById("todayRoutines");
-  const date = new Date();
-  const dateKey = todayKey(date);
-  const due = routinesForToday(db, date);
-
-  if (!due.length) {
-    wrap.innerHTML = emptyState("✨", "Nothing to do", "Enjoy the calm.");
-    return;
-  }
-  // Group by time of day so it reads as Morning / Afternoon / Evening, not a pile.
+/* Render a list of routines grouped by time of day into a container. */
+function renderGroupedRoutines(wrap, db, list, dateKey, opts) {
   let html = "", lastGroup = null;
-  due.forEach((r) => {
+  list.forEach((r) => {
     const g = r.timeOfDay || "anytime";
     if (g !== lastGroup) { html += `<div class="time-group">${TIME_LABEL[g] || "Anytime"}</div>`; lastGroup = g; }
-    html += routineCardHTML(db, r, dateKey, { compact: true });
+    html += routineCardHTML(db, r, dateKey, opts);
   });
   wrap.innerHTML = html;
 }
 
-/* Count of done / total for today, used in the summary line. */
+/* ---- Home: only MY personal tasks for today ---- */
+function renderTodayRoutines(db) {
+  const wrap = document.getElementById("todayRoutines");
+  const date = new Date();
+  const due = personalTasksToday(db, date);
+  if (!due.length) {
+    wrap.innerHTML = emptyState("✨", "Nothing personal today", "Enjoy the calm.");
+    return;
+  }
+  renderGroupedRoutines(wrap, db, due, todayKey(date), { compact: true });
+}
+
+/* ---- Home: a quiet "household jobs today" line → taps to Cleaning ---- */
+function renderTodayHousehold(db) {
+  const wrap = document.getElementById("todayHousehold");
+  if (!wrap) return;
+  const date = new Date();
+  const dateKey = todayKey(date);
+  const chores = sharedChoresToday(db, date);
+  if (!chores.length) { wrap.innerHTML = ""; return; }
+  const doneN = chores.filter((r) => isDone(db, r.id, dateKey)).length;
+  wrap.innerHTML = `
+    <button class="household-line" data-goto="cleaning">
+      🧹 <span>${doneN}/${chores.length} household jobs today</span>
+      <span class="household-line__go">›</span>
+    </button>`;
+}
+
+/* ---- Cleaning tab: shared chores (cleaning + other household) ---- */
+function renderCleaning(db) {
+  const wrap = document.getElementById("cleaningList");
+  if (!wrap) return;
+  const dateKey = todayKey();
+  const cleaning = db.routines.filter((r) => r.area === "cleaning").sort(byTime);
+  const household = db.routines.filter((r) => r.area === "household").sort(byTime);
+  if (!cleaning.length && !household.length) {
+    wrap.innerHTML = emptyState("🧹", "No household jobs yet", "Add cleaning or chores you share — bins, hoovering, kitchen.");
+    return;
+  }
+  const section = (label, list) => list.length
+    ? `<div class="time-group">${label}</div>` +
+      list.map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true })).join("")
+    : "";
+  wrap.innerHTML = section("Cleaning", cleaning) + section("Other household", household);
+}
+
+/* Count of done / total for MY personal tasks today (Home summary). */
 function todayProgress(db) {
   const date = new Date();
   const dateKey = todayKey(date);
-  const due = routinesForToday(db, date);
+  const due = personalTasksToday(db, date);
   const done = due.filter((r) => isDone(db, r.id, dateKey)).length;
   return { done, total: due.length };
 }

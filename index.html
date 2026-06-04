@@ -39,7 +39,7 @@
   <!-- ============ MAIN VIEWS ============ -->
   <main id="main">
 
-    <!-- ---- TODAY ---- -->
+    <!-- ---- HOME (a simple snapshot of your day) ---- -->
     <section id="view-today" class="view" data-view="today">
       <div class="view__head">
         <h2>Today</h2>
@@ -50,27 +50,51 @@
       <div id="shiftBanner"></div>
       <div id="restBanner"></div>
 
-      <!-- To do -->
-      <h3 class="section-label" id="tasksLabel">To do today</h3>
-      <div id="todayRoutines" class="card-list">
-        <!-- today's routines injected here -->
-      </div>
+      <h3 class="section-label">Your tasks</h3>
+      <div id="todayRoutines" class="card-list"></div>
       <div id="todayProjects"></div>
+      <div id="todayHousehold"></div>
 
-      <!-- Schedule -->
       <h3 class="section-label">Your day</h3>
       <div id="todayCalendar"></div>
-
-      <!-- Health + money (quiet) -->
-      <h3 class="section-label">At a glance</h3>
-      <div id="todayHealth"></div>
-      <div id="todayMoney"></div>
     </section>
 
-    <!-- ---- ROUTINES ---- -->
-    <section id="view-routines" class="view" data-view="routines" hidden>
+    <!-- ---- CLEANING & CHORES (shared) ---- -->
+    <section id="view-cleaning" class="view" data-view="cleaning" hidden>
       <div class="view__head">
-        <h2>Routines</h2>
+        <h2>Cleaning &amp; chores</h2>
+        <button class="btn btn--primary" id="addCleaningBtn">+ New</button>
+      </div>
+      <p class="view__sub" style="margin:0 0 12px">Shared household jobs — you both see these.</p>
+      <div id="cleaningList" class="card-list"></div>
+    </section>
+
+    <!-- ---- FOOD: fridge & freezer (shared) ---- -->
+    <section id="view-food" class="view" data-view="food" hidden>
+      <div class="view__head">
+        <h2>Fridge &amp; Freezer</h2>
+      </div>
+      <div id="foodBody"></div>
+    </section>
+
+    <!-- ---- HEALTH ---- -->
+    <section id="view-health" class="view" data-view="health" hidden>
+      <div class="view__head">
+        <h2>Health</h2>
+      </div>
+      <div id="todayHealth"></div>
+    </section>
+
+    <!-- ---- MORE ---- -->
+    <section id="view-more" class="view" data-view="more" hidden>
+      <div class="view__head"><h2>More</h2></div>
+      <div class="more-links">
+        <button class="more-link" data-goto="learn">📚 <span>Learn Punjabi</span> <span class="more-link__go">›</span></button>
+        <button class="more-link" data-goto="money">💷 <span>Money</span> <span class="more-link__go">›</span></button>
+      </div>
+
+      <div class="subhead-row">
+        <h3>Your routines</h3>
         <div class="head-actions">
           <button class="btn btn--mini" id="suggestRoutinesBtn">Suggestions</button>
           <button class="btn btn--primary" id="addRoutineBtn">+ New</button>
@@ -82,22 +106,24 @@
         <h3>Projects</h3>
         <button class="btn btn--mini" id="addProjectBtn">+ New</button>
       </div>
-      <p class="view__sub" style="margin:0 0 12px">Big stuck tasks, broken into steps — only the next one shows on Today.</p>
+      <p class="view__sub" style="margin:0 0 12px">Big stuck tasks, broken into steps — only the next one shows on Home.</p>
       <div id="projectsList" class="card-list"></div>
     </section>
 
-    <!-- ---- MONEY (connects to the Finances Tracker) ---- -->
+    <!-- ---- MONEY (reached from More) ---- -->
     <section id="view-money" class="view" data-view="money" hidden>
       <div class="view__head">
         <h2>Money</h2>
+        <button class="btn btn--mini" data-goto="more">‹ More</button>
       </div>
       <div id="moneyView"></div>
     </section>
 
-    <!-- ---- LEARN PUNJABI ---- -->
+    <!-- ---- LEARN PUNJABI (reached from More) ---- -->
     <section id="view-learn" class="view" data-view="learn" hidden>
       <div class="view__head">
         <h2>Learn Punjabi</h2>
+        <button class="btn btn--mini" data-goto="more">‹ More</button>
       </div>
       <div class="seg" id="learnTabs" role="tablist">
         <button class="seg__btn is-active" data-learn="words">Words</button>
@@ -113,16 +139,19 @@
   <!-- ============ BOTTOM NAV ============ -->
   <nav class="tabbar" aria-label="Main sections">
     <button class="tab is-active" data-goto="today">
-      <span class="tab__icon">☀️</span><span class="tab__label">Today</span>
+      <span class="tab__icon">🏠</span><span class="tab__label">Home</span>
     </button>
-    <button class="tab" data-goto="routines">
-      <span class="tab__icon">🔁</span><span class="tab__label">Routines</span>
+    <button class="tab" data-goto="cleaning">
+      <span class="tab__icon">🧹</span><span class="tab__label">Cleaning</span>
     </button>
-    <button class="tab" data-goto="money">
-      <span class="tab__icon">💷</span><span class="tab__label">Money</span>
+    <button class="tab" data-goto="food">
+      <span class="tab__icon">❄️</span><span class="tab__label">Food</span>
     </button>
-    <button class="tab" data-goto="learn">
-      <span class="tab__icon">📚</span><span class="tab__label">Learn</span>
+    <button class="tab" data-goto="health">
+      <span class="tab__icon">💗</span><span class="tab__label">Health</span>
+    </button>
+    <button class="tab" data-goto="more">
+      <span class="tab__icon">⋯</span><span class="tab__label">More</span>
     </button>
   </nav>
 
@@ -146,6 +175,7 @@
   <script src="js/finance.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/punjabi.js"></script>
+  <script src="js/food.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

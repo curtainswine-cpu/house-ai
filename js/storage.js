@@ -116,6 +116,9 @@ function defaultData() {
       connectedOnce: false, // only auto-refresh after she's signed in once
     },
 
+    // Fridge/Freezer — shared stock with use-by dates (the Food page).
+    food: { items: [] }, // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added}
+
     // Learn Punjabi — starter words (verify/correct freely; add your own).
     punjabi: {
       words: [
@@ -156,14 +159,27 @@ function normalize(db) {
   if (!db.calendar.clientId) db.calendar.clientId = DEFAULT_CALENDAR_CLIENT_ID; // reaches older installs too
   if (!Array.isArray(db.calendar.lastEvents)) db.calendar.lastEvents = [];
   if (!db.punjabi || !Array.isArray(db.punjabi.words)) db.punjabi = d.punjabi;
+  if (!db.food || !Array.isArray(db.food.items)) db.food = d.food;
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
     if (p.name === "Kirsty") { p.name = "Kirsten"; p.colour = "#46d6f5"; }
     if (p.name === "Jack") { p.colour = "#e7b54a"; }
   });
-  applySeedAdditions(db);
+  applySeedAdditions(db); // may add new routines — tag areas AFTER this
+  // Tag every task with an "area": 'me' (personal) | 'cleaning' | 'household'.
+  db.routines.forEach((r) => { if (!r.area) r.area = inferArea(r); });
   return db;
+}
+
+/* Guess a task's area from its wording / assignment (for tasks made before
+   areas existed). 'me' = personal, else a shared household area. */
+function inferArea(r) {
+  const t = (r.title || "").toLowerCase();
+  if (/\bbin|tip|dog|pet|feed|hoover|vacuum|rubbish|recycl/.test(t)) return "household";
+  if (/clean|kitchen|bathroom|dust|mop|dish|wipe|tidy|surface|laundry|wash|hoover|floor/.test(t)) return "cleaning";
+  if (r.assignedTo === "either" || r.assignedTo === "both") return "household";
+  return "me";
 }
 
 /* One-time routine additions that should reach EXISTING installs too.

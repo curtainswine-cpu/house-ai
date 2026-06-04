@@ -32,12 +32,15 @@ function formatNiceDate(dateKey) {
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /* ---------- Navigation ---------- */
+// Sub-pages reached from "More" keep the More tab highlighted.
+const TAB_FOR_VIEW = { learn: "more", money: "more" };
 function goto(view) {
   document.querySelectorAll(".view").forEach((v) => {
     v.hidden = v.dataset.view !== view;
   });
+  const activeTab = TAB_FOR_VIEW[view] || view;
   document.querySelectorAll(".tab").forEach((t) => {
-    t.classList.toggle("is-active", t.dataset.goto === view);
+    t.classList.toggle("is-active", t.dataset.goto === activeTab);
   });
   window.scrollTo({ top: 0 });
   render();
@@ -79,21 +82,23 @@ function render() {
   const prog = todayProgress(DB);
   document.getElementById("todaySummary").textContent =
     rest ? "A day for you. Be kind to yourself. 💙"
-    : prog.total === 0 ? "Nothing on the schedule. Enjoy the quiet."
-    : prog.done === prog.total ? `All ${prog.total} tasks complete. Nicely done.`
+    : prog.total === 0 ? "Nothing personal on today. Enjoy the quiet."
+    : prog.done === prog.total ? `All ${prog.total} done. Nicely done.`
     : `${prog.done} of ${prog.total} done — one thing at a time.`;
   renderShiftBanner(DB);
-  renderTodayRoutines(DB);
+  renderTodayRoutines(DB);   // Home: my personal tasks
   renderTodayProjects(DB);
+  renderTodayHousehold(DB);  // Home: quiet "household jobs today" line
   renderTodayCalendar(DB);
-  renderTodayHealth(DB);
-  renderTodayMoney(DB);
 
-  // Other views
-  renderRoutinesView(DB);
-  renderProjectsManager(DB);
-  renderMoneyView(DB);
-  renderLearn(DB);
+  // Other tabs
+  renderCleaning(DB);        // Cleaning tab
+  renderFood(DB);            // Food tab
+  renderTodayHealth(DB);     // Health tab (water/steps/gym)
+  renderRoutinesView(DB);    // More → your routines
+  renderProjectsManager(DB); // More → projects
+  renderMoneyView(DB);       // More → Money
+  renderLearn(DB);           // More → Learn
 }
 
 function renderPersonToggle() {
@@ -117,8 +122,12 @@ function closeModal() {
 
 /* ---------- Add / edit routine ----------
    Pass an existing routine to edit it; pass nothing to add a new one. */
-function openRoutineModal(existing) {
-  const r = existing || { timeOfDay: "morning", repeat: "daily", steps: [], assignedTo: "either" };
+function openRoutineModal(existing, presetArea) {
+  const r = existing || {
+    timeOfDay: "morning", repeat: "daily", steps: [],
+    assignedTo: (presetArea && presetArea !== "me") ? "either" : DB.activePerson,
+    area: presetArea || "me",
+  };
   const isEdit = !!existing;
 
   const peopleOpts = [
@@ -126,6 +135,9 @@ function openRoutineModal(existing) {
     `<option value="both"${r.assignedTo === "both" ? " selected" : ""}>Both of us</option>`,
     ...DB.people.map((p) => `<option value="${p.id}"${r.assignedTo === p.id ? " selected" : ""}>${escapeHTML(p.name)}</option>`),
   ].join("");
+
+  const areaChips = [["me","Mine"],["cleaning","Cleaning"],["household","Household"]]
+    .map(([val,label]) => `<button class="chip" data-area="${val}" aria-pressed="${(r.area || "me") === val}">${label}</button>`).join("");
 
   const timeChips = ["morning","afternoon","evening","anytime"].map((t) =>
     `<button class="chip" data-time="${t}" aria-pressed="${r.timeOfDay === t}">${TIME_LABEL[t]}</button>`).join("");
@@ -137,6 +149,11 @@ function openRoutineModal(existing) {
     <div class="field">
       <label for="rTitle">What is it?</label>
       <input id="rTitle" placeholder="e.g. Evening kitchen reset" value="${escapeAttr(r.title || "")}" />
+    </div>
+    <div class="field">
+      <label>What kind?</label>
+      <div class="chip-row" id="rArea">${areaChips}</div>
+      <small style="color:var(--muted)">Mine = personal (shows on Home). Cleaning / Household = shared (in the Cleaning tab).</small>
     </div>
     <div class="field">
       <label for="rWho">Who does it?</label>
@@ -167,8 +184,12 @@ function openRoutineModal(existing) {
     ${isEdit ? `<button class="btn btn--danger btn--block" id="rDelete">Delete this routine</button>` : ""}
   `);
 
-  let time = r.timeOfDay, repeat = r.repeat;
+  let time = r.timeOfDay, repeat = r.repeat, area = r.area || "me";
 
+  document.getElementById("rArea").onclick = (e) => {
+    const b = e.target.closest("[data-area]"); if (!b) return;
+    area = b.dataset.area; pressOne("rArea", b);
+  };
   document.getElementById("rTime").onclick = (e) => {
     const b = e.target.closest("[data-time]"); if (!b) return;
     time = b.dataset.time; pressOne("rTime", b);
@@ -187,6 +208,7 @@ function openRoutineModal(existing) {
       .split("\n").map((s) => s.trim()).filter(Boolean);
     const patch = {
       title,
+      area,
       assignedTo: document.getElementById("rWho").value,
       timeOfDay: time,
       repeat,
@@ -438,6 +460,21 @@ function wireEvents() {
       return;
     }
 
+    // ---- Food: fridge & freezer ----
+    const fdWhere = e.target.closest("[data-fd-where]");
+    if (fdWhere) { pressOne("fdWhere", fdWhere); return; }
+    if (e.target.closest("[data-fd-add]")) {
+      const name = document.getElementById("fdName").value.trim();
+      if (!name) { document.getElementById("fdName").focus(); return; }
+      const where = document.querySelector('#fdWhere [aria-pressed="true"]').dataset.fdWhere;
+      const useBy = document.getElementById("fdUseBy").value || null;
+      addFood(DB, { name, where, useBy });
+      render();
+      return;
+    }
+    const delFood = e.target.closest("[data-del-food]");
+    if (delFood) { deleteFood(DB, delFood.dataset.delFood); render(); return; }
+
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
     if (e.target.closest("[data-cal-refresh]")) { connectCalendar(DB); return; }
@@ -454,6 +491,7 @@ function wireEvents() {
   document.getElementById("addRoutineBtn").onclick = () => openRoutineModal();
   document.getElementById("addProjectBtn").onclick = () => openProjectModal();
   document.getElementById("suggestRoutinesBtn").onclick = openSuggestionsModal;
+  document.getElementById("addCleaningBtn").onclick = () => openRoutineModal(null, "cleaning");
 
   // Esc closes modal
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });

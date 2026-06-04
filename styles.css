@@ -132,6 +132,25 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   border-radius: 10px; font-size: 1.1rem; color: var(--muted);
 }
 
+/* ---------- Household line on Home + More menu ---------- */
+.household-line {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; color: var(--ink); font-weight: 600; box-shadow: var(--shadow);
+  margin-top: 4px;
+}
+.household-line span:first-of-type { flex: 1; text-align: left; }
+.household-line__go { color: var(--accent); font-size: 1.3rem; }
+
+.more-links { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.more-link {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; color: var(--ink); font-weight: 600; font-size: 1rem; box-shadow: var(--shadow);
+}
+.more-link span:first-of-type { flex: 1; text-align: left; }
+.more-link__go { color: var(--accent); font-size: 1.3rem; }
+
 /* ---------- Section labels (calm organisers on Today) ---------- */
 .section-label {
   font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
