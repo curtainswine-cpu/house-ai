@@ -154,10 +154,10 @@ function calendarOwnedByActive(db) {
 /* ---- Render the Today calendar card ---- */
 function renderTodayCalendar(db) {
   const wrap = document.getElementById("todayCalendar");
-  const mineCal = calendarOwnedByActive(db);
-  const ownerName = (db.people.find((p) => p.id === db.calendar.owner) || {}).name || "their";
-  const schedTitle = mineCal ? "Today's schedule" : `${escapeHTML(ownerName)}'s schedule`;
-  const emptyText = mineCal ? "Nothing in your calendar today." : `Nothing in ${escapeHTML(ownerName)}'s calendar today.`;
+
+  // A "work pattern" person (e.g. Jack) has no calendar — their banner covers it.
+  const person = db.people.find((p) => p.id === db.activePerson);
+  if (person && person.work) { wrap.innerHTML = ""; return; }
 
   if (!calendarConfigured(db)) {
     wrap.innerHTML = `
@@ -173,7 +173,7 @@ function renderTodayCalendar(db) {
   const today = eventsForDay(events, todayKey());
   const todayHTML = today.length
     ? `<ul class="cal__list">${today.map(eventRow).join("")}</ul>`
-    : `<p class="goal__hint">${emptyText}</p>`;
+    : `<p class="goal__hint">Nothing in your calendar today.</p>`;
 
   let weekHTML = "";
   for (let i = 1; i < 7; i++) {
@@ -188,7 +188,7 @@ function renderTodayCalendar(db) {
 
   wrap.innerHTML = `
     <div class="cal">
-      <div class="cal__head">📅 ${schedTitle}
+      <div class="cal__head">📅 Today's schedule
         ${db.calendar.lastFetched ? `<span class="cal__sync">updated ${formatAgo(db.calendar.lastFetched)}</span>` : ""}
       </div>
       ${todayHTML}
@@ -238,18 +238,21 @@ function todayShift(db) {
 function renderShiftBanner(db) {
   const wrap = document.getElementById("shiftBanner");
   if (!wrap) return;
+
+  // A "work pattern" person (e.g. Jack) just gets a simple yellow banner.
+  const person = db.people.find((p) => p.id === db.activePerson);
+  if (person && person.work) {
+    wrap.innerHTML = `<div class="shift-banner shift--work">💼 ${escapeHTML(person.work)}</div>`;
+    return;
+  }
+
+  // Otherwise (the calendar person) — set the tone from today's shift.
   const s = todayShift(db);
   if (!s) { wrap.innerHTML = ""; return; }
-
   const t = (s.start && !s.allDay)
     ? " from " + new Date(s.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
     : "";
-  const mine = calendarOwnedByActive(db);
-  const ownerName = (db.people.find((p) => p.id === db.calendar.owner) || {}).name || "They";
-
-  // When it's YOUR day, JARVIS speaks to you. When you're looking at your
-  // partner's day, it tells you how busy THEY are (third person).
-  const C = mine ? {
+  const C = {
     longday:     ["shift--work", "💪", `Long day today${t}. A big one — I've kept things light. Just the essentials; the rest can wait.`],
     early:       ["shift--work", "🌅", `Early shift today${t}. Keep this morning simple.`],
     late:        ["shift--work", "🌆", `Late shift today${t}.`],
@@ -258,15 +261,6 @@ function renderShiftBanner(db) {
     postnight:   ["shift--night", "😴", `Post-night — rest and recover. Nothing's expected of you this morning. 💙`],
     annualleave: ["shift--off", "🏖️", `Annual leave — enjoy it. 💙`],
     off:         ["shift--off", "🎉", `Day off — a good one for the gym, a laundry step, or simply resting.`],
-  } : {
-    longday:     ["shift--work", "💪", `${ownerName}'s on a long day today${t} — a busy one for them.`],
-    early:       ["shift--work", "🌅", `${ownerName}'s on an early shift today${t}.`],
-    late:        ["shift--work", "🌆", `${ownerName}'s on a late shift today${t}.`],
-    work:        ["shift--work", "🏥", `${ownerName}'s working today${t}.`],
-    night:       ["shift--night", "🌙", `${ownerName}'s on a night shift tonight${t}.`],
-    postnight:   ["shift--night", "😴", `${ownerName}'s recovering after a night shift.`],
-    annualleave: ["shift--off", "🏖️", `${ownerName}'s on annual leave.`],
-    off:         ["shift--off", "🎉", `${ownerName}'s off today.`],
   };
   const [cls, emoji, msg] = C[s.type] || ["", "", ""];
   if (!msg) { wrap.innerHTML = ""; return; }

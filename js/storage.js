@@ -15,8 +15,10 @@ const DEFAULT_CALENDAR_CLIENT_ID = "1070575707230-frs2bctfil1q6f05j92uic1u6s4i1i
 function defaultData() {
   return {
     people: [
-      { id: "kirsten", name: "Kirsten", colour: "#46d6f5" }, // arc-reactor cyan
-      { id: "jack",    name: "Jack",    colour: "#e7b54a" }, // Iron Man gold
+      { id: "kirsten", name: "Kirsten", colour: "#46d6f5" }, // arc-reactor cyan (has a calendar)
+      // Jack has no calendar — just a regular work pattern shown as a banner.
+      { id: "jack", name: "Jack", colour: "#e7b54a", // Iron Man gold
+        work: "At work · 9–5:30 (usually in by 10–10:30). Sometimes works from home." },
     ],
     activePerson: "kirsten",
     routines: [
@@ -169,7 +171,10 @@ function normalize(db) {
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
     if (p.name === "Kirsty") { p.name = "Kirsten"; p.colour = "#46d6f5"; }
-    if (p.name === "Jack") { p.colour = "#e7b54a"; }
+    if (p.name === "Jack") {
+      p.colour = "#e7b54a";
+      if (!p.work) p.work = "At work · 9–5:30 (usually in by 10–10:30). Sometimes works from home.";
+    }
   });
   applySeedAdditions(db); // may add new routines — tag areas AFTER this
   // Tag every task with an "area": 'me' (personal) | 'cleaning' | 'household'.
