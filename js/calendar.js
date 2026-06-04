@@ -36,6 +36,7 @@ function ensureTokenClient(db) {
         DB.calendar.connectedOnce = true; // from now on, refresh quietly on load
         DB.calendar.token = _calToken;    // remember it so a refresh won't re-login
         DB.calendar.tokenExp = _calTokenExp;
+        if (!DB.calendar.owner) DB.calendar.owner = DB.activePerson; // calendar belongs to whoever signed in
         saveDB(DB);
         fetchWeekEvents().then(() => render());
       } else if (resp && resp.error && resp.error !== "interaction_required") {
@@ -81,7 +82,9 @@ function calendarBootstrap(db, attempt) {
   attempt = attempt || 0;
   if (gisReady()) {
     ensureTokenClient(db);
-    try { _calClient.requestAccessToken({ prompt: "" }); } catch (e) { /* stay on cache */ }
+    // 'none' = fully silent: never pops the account chooser. If it can't refresh
+    // quietly, we just keep the saved copy (she can hit Refresh to sign in).
+    try { _calClient.requestAccessToken({ prompt: "none" }); } catch (e) { /* stay on cache */ }
   } else if (attempt < 12) {
     setTimeout(() => calendarBootstrap(db, attempt + 1), 500);
   }
@@ -143,9 +146,25 @@ function eventRow(e) {
   return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}${src}</span></li>`;
 }
 
+/* Is the connected calendar the active person's? (It belongs to whoever signed in.) */
+function calendarOwnedByActive(db) {
+  return !db.calendar.owner || db.calendar.owner === db.activePerson;
+}
+
 /* ---- Render the Today calendar card ---- */
 function renderTodayCalendar(db) {
   const wrap = document.getElementById("todayCalendar");
+
+  // The calendar belongs to whoever signed in — don't show it to the other person.
+  if (db.calendar.owner && !calendarOwnedByActive(db)) {
+    const ownerName = (db.people.find((p) => p.id === db.calendar.owner) || {}).name || "someone else";
+    wrap.innerHTML = `
+      <div class="cal">
+        <div class="cal__head">📅 Calendar</div>
+        <p class="goal__hint">This calendar is ${escapeHTML(ownerName)}'s. Switch to ${escapeHTML(ownerName)} (top right) to see it — your own calendar can be connected separately later.</p>
+      </div>`;
+    return;
+  }
 
   if (!calendarConfigured(db)) {
     wrap.innerHTML = `
@@ -211,6 +230,7 @@ function eventsOn(db, dateKey) {
 /* Returns {type, start?, allDay?} or null if we shouldn't guess. */
 function todayShift(db) {
   if (!db.calendar.connectedOnce) return null; // don't claim "day off" before we have data
+  if (!calendarOwnedByActive(db)) return null;  // not this person's calendar → no shift banner
   const tk = todayKey();
   for (const e of eventsOn(db, tk)) {
     const t = classifyShift(e.summary);

@@ -116,6 +116,7 @@ function defaultData() {
       connectedOnce: false, // only auto-refresh after she's signed in once
       token: "",         // remembered access token (so a refresh doesn't re-login)
       tokenExp: 0,       // when that token expires (epoch ms)
+      owner: "",         // which person this calendar belongs to (whoever signed in)
     },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
@@ -160,6 +161,8 @@ function normalize(db) {
   db.calendar = Object.assign({}, d.calendar, db.calendar || {});
   if (!db.calendar.clientId) db.calendar.clientId = DEFAULT_CALENDAR_CLIENT_ID; // reaches older installs too
   if (!Array.isArray(db.calendar.lastEvents)) db.calendar.lastEvents = [];
+  // Existing connections were Kirsten's — tag her as the owner so it's hidden from Jack.
+  if (!db.calendar.owner && db.calendar.connectedOnce) db.calendar.owner = "kirsten";
   if (!db.punjabi || !Array.isArray(db.punjabi.words)) db.punjabi = d.punjabi;
   if (!db.food || !Array.isArray(db.food.items)) db.food = d.food;
   if (!db.appliedSeeds) db.appliedSeeds = {};
