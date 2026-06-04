@@ -34,6 +34,8 @@ function ensureTokenClient(db) {
         _calTokenExp = Date.now() + (Number(resp.expires_in || 3600) * 1000) - 60000;
         _calStatus = "";
         DB.calendar.connectedOnce = true; // from now on, refresh quietly on load
+        DB.calendar.token = _calToken;    // remember it so a refresh won't re-login
+        DB.calendar.tokenExp = _calTokenExp;
         saveDB(DB);
         fetchWeekEvents().then(() => render());
       } else if (resp && resp.error && resp.error !== "interaction_required") {
@@ -54,10 +56,22 @@ function connectCalendar(db) {
   c.requestAccessToken({ prompt: _calToken ? "" : "consent" });
 }
 
-/* Quiet refresh on load — no popup; only works if already consented. */
+/* Reuse a still-valid remembered token so a page refresh doesn't re-login. */
+function restoreCalToken(db) {
+  if (db.calendar.token && db.calendar.tokenExp && Date.now() < db.calendar.tokenExp) {
+    _calToken = db.calendar.token;
+    _calTokenExp = db.calendar.tokenExp;
+    return true;
+  }
+  return false;
+}
+
+/* On load: if we still have a valid token, just fetch (no Google round-trip).
+   Otherwise refresh quietly — no popup; only works if already consented. */
 function calendarBootstrap(db, attempt) {
   // Only auto-reach Google once she's connected at least once — no nag before.
   if (!calendarConfigured(db) || !db.calendar.connectedOnce) return;
+  if (restoreCalToken(db)) { fetchWeekEvents().then(() => render()); return; }
   attempt = attempt || 0;
   if (gisReady()) {
     ensureTokenClient(db);

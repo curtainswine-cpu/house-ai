@@ -114,6 +114,8 @@ function defaultData() {
       lastEvents: [],    // cached events so today's plan shows instantly/offline
       lastFetched: null,
       connectedOnce: false, // only auto-refresh after she's signed in once
+      token: "",         // remembered access token (so a refresh doesn't re-login)
+      tokenExp: 0,       // when that token expires (epoch ms)
     },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
