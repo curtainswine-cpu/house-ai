@@ -151,13 +151,43 @@ function calendarOwnedByActive(db) {
   return !db.calendar.owner || db.calendar.owner === db.activePerson;
 }
 
+/* Build the today + this-week HTML from an events array (shared layout). */
+function scheduleHTML(events, emptyText) {
+  const today = eventsForDay(events, todayKey());
+  const todayHTML = today.length
+    ? `<ul class="cal__list">${today.map(eventRow).join("")}</ul>`
+    : `<p class="goal__hint">${emptyText}</p>`;
+  let weekHTML = "";
+  for (let i = 1; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const evs = eventsForDay(events, todayKey(d));
+    if (!evs.length) continue;
+    weekHTML += `<div class="cal__day">
+      <div class="cal__dayname">${d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })}</div>
+      <ul class="cal__list">${evs.map(eventRow).join("")}</ul></div>`;
+  }
+  if (!weekHTML) weekHTML = `<p class="goal__hint">Nothing else in the next few days.</p>`;
+  return { todayHTML, weekHTML };
+}
+
 /* ---- Render the Today calendar card ---- */
 function renderTodayCalendar(db) {
   const wrap = document.getElementById("todayCalendar");
 
-  // A "work pattern" person (e.g. Jack) has no calendar — their banner covers it.
+  // A work-pattern person (Jack) gets a calendar-type view built from their hours.
   const person = db.people.find((p) => p.id === db.activePerson);
-  if (person && person.work) { wrap.innerHTML = ""; return; }
+  if (person && person.work) {
+    const { todayHTML, weekHTML } = scheduleHTML(generateWorkEvents(person, 7), "Not a work day today.");
+    wrap.innerHTML = `
+      <div class="cal">
+        <div class="cal__head">📅 Today's schedule</div>
+        ${todayHTML}
+        ${person.work.note ? `<p class="goal__hint">${escapeHTML(person.work.note)}</p>` : ""}
+        <div class="goal__actions"><button class="link-btn" data-cal-week>see this week</button></div>
+        <div id="calWeek" hidden>${weekHTML}</div>
+      </div>`;
+    return;
+  }
 
   if (!calendarConfigured(db)) {
     wrap.innerHTML = `
@@ -235,14 +265,57 @@ function todayShift(db) {
   return { type: "off" };
 }
 
+/* Build pseudo-events for a work-pattern person (e.g. Jack) so their regular
+   hours render like a calendar. */
+function generateWorkEvents(person, days) {
+  const w = person.work || {};
+  const out = [];
+  for (let i = 0; i < (days || 7); i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    if ((w.days || []).includes(d.getDay())) {
+      out.push({ summary: `Work · ${w.start}–${w.end}`, start: todayKey(d) + "T" + (w.start || "09:00") + ":00", allDay: false });
+    }
+  }
+  return out;
+}
+function isWorkDayToday(person) {
+  return (person.work && person.work.days || []).includes(new Date().getDay());
+}
+/* Short one-liner for a calendar person's shift today (for the partner banner). */
+function shiftShort(s) {
+  if (!s) return "";
+  const t = (s.start && !s.allDay) ? new Date(s.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "";
+  switch (s.type) {
+    case "longday": return `Long day${t ? ` from ${t}` : ""}`;
+    case "night": return `Night shift${t ? ` from ${t}` : ""}`;
+    case "postnight": return "Recovering after a night";
+    case "early": return `Early shift${t ? ` from ${t}` : ""}`;
+    case "late": return `Late shift${t ? ` from ${t}` : ""}`;
+    case "work": return `Working${t ? ` from ${t}` : ""}`;
+    case "annualleave": return "Annual leave";
+    case "off": return "Day off";
+    default: return "";
+  }
+}
+
 function renderShiftBanner(db) {
   const wrap = document.getElementById("shiftBanner");
   if (!wrap) return;
 
-  // A "work pattern" person (e.g. Jack) just gets a simple yellow banner.
   const person = db.people.find((p) => p.id === db.activePerson);
+
+  // On a work-pattern person's page (Jack), the yellow banner shows the
+  // PARTNER's schedule (e.g. Kirsten's shift) for coordination.
   if (person && person.work) {
-    wrap.innerHTML = `<div class="shift-banner shift--work">💼 ${escapeHTML(person.work)}</div>`;
+    const partner = db.people.find((p) => p.id !== db.activePerson);
+    let msg = "";
+    if (partner && partner.work) {
+      msg = `${partner.name}: ${isWorkDayToday(partner) ? "at work today" : "not working today"}`;
+    } else if (partner) {
+      const short = shiftShort(todayShift(db)); // the calendar person's shift today
+      if (short) msg = `${partner.name}: ${short}`;
+    }
+    wrap.innerHTML = msg ? `<div class="shift-banner shift--work">💛 ${escapeHTML(msg)}</div>` : "";
     return;
   }
 

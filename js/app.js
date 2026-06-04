@@ -123,9 +123,6 @@ function render() {
   renderShiftBanner(DB);
   renderTodayCalendar(DB);
   renderHomeNav(DB);
-  // Hide the "Your day" heading for a work-pattern person (no calendar to show).
-  const activeP = DB.people.find((p) => p.id === DB.activePerson);
-  document.getElementById("dayLabel").hidden = !!(activeP && activeP.work);
 
   // The other pages
   renderTodayRoutines(DB);   // Mini missions: my personal tasks

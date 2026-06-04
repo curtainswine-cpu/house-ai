@@ -16,9 +16,10 @@ function defaultData() {
   return {
     people: [
       { id: "kirsten", name: "Kirsten", colour: "#46d6f5" }, // arc-reactor cyan (has a calendar)
-      // Jack has no calendar — just a regular work pattern shown as a banner.
+      // Jack has no calendar — JARVIS builds one from this regular work pattern.
       { id: "jack", name: "Jack", colour: "#e7b54a", // Iron Man gold
-        work: "At work · 9–5:30 (usually in by 10–10:30). Sometimes works from home." },
+        work: { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:30",
+                note: "Usually in by 10–10:30 · sometimes works from home" } },
     ],
     activePerson: "kirsten",
     routines: [
@@ -173,7 +174,10 @@ function normalize(db) {
     if (p.name === "Kirsty") { p.name = "Kirsten"; p.colour = "#46d6f5"; }
     if (p.name === "Jack") {
       p.colour = "#e7b54a";
-      if (!p.work) p.work = "At work · 9–5:30 (usually in by 10–10:30). Sometimes works from home.";
+      if (!p.work || typeof p.work !== "object") {
+        p.work = { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:30",
+                   note: "Usually in by 10–10:30 · sometimes works from home" };
+      }
     }
   });
   applySeedAdditions(db); // may add new routines — tag areas AFTER this
