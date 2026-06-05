@@ -4,6 +4,37 @@
    as things approach their date. Saves in localStorage like the rest.
    ============================================================ */
 
+/* ---- Meal-app bridge: auto-stock the freezer with dishes collected from Mum ----
+   Reads the public, read-only `collected_dishes` view from the meal planner's
+   Supabase (publishable key only — no private data). */
+const MEAL_SUPABASE_URL = "https://jqsizkhasbvsyplgcwjm.supabase.co";
+const MEAL_SUPABASE_KEY = "sb_publishable_awfUJeR7Y-JX0K9eYFf6IA_qYn-tmr1";
+
+async function syncCollectedMeals(db) {
+  try {
+    const res = await fetch(
+      `${MEAL_SUPABASE_URL}/rest/v1/collected_dishes?select=id,name,collected_at&order=collected_at.desc`,
+      { headers: { apikey: MEAL_SUPABASE_KEY, Authorization: "Bearer " + MEAL_SUPABASE_KEY }, cache: "no-store" }
+    );
+    if (!res.ok) return { ok: false, status: res.status };
+    const dishes = await res.json();
+    if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
+    let added = 0;
+    dishes.forEach((d) => {
+      if (!d.id || db.food.importedIds.includes(d.id)) return;
+      let useBy = null;
+      if (d.collected_at) { const dt = new Date(d.collected_at); dt.setDate(dt.getDate() + 90); useBy = todayKey(dt); }
+      db.food.items.push({ id: uid(), name: d.name || "Meal from Mum", where: "freezer", useBy, added: todayKey(), note: "From Mum's" });
+      db.food.importedIds.push(d.id);
+      added++;
+    });
+    if (added) saveDB(db);
+    return { ok: true, added };
+  } catch (e) {
+    return { ok: false, error: "network" };
+  }
+}
+
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const d = new Date(dateStr + "T00:00:00");
@@ -38,11 +69,12 @@ function useByTag(useBy) {
 }
 
 function foodRow(db, i) {
+  const src = i.note ? `<span class="tag">${escapeHTML(i.note)}</span>` : "";
   return `
     <article class="card routine routine--compact food-item">
       <div class="card__main">
         <div class="card__title">${escapeHTML(i.name)}</div>
-        <div class="card__meta">${useByTag(i.useBy)}</div>
+        <div class="card__meta">${useByTag(i.useBy)}${src}</div>
       </div>
       <button class="icon-btn" data-del-food="${i.id}" aria-label="Remove">🗑️</button>
     </article>`;
@@ -54,6 +86,12 @@ function foodSoonCount(db) { return foodUseSoon(db).length; }
 function renderFood(db) {
   const wrap = document.getElementById("foodBody");
   if (!wrap) return;
+
+  const mealSync = `
+    <div class="goal__actions" style="margin-bottom:14px">
+      <button class="btn btn--mini" data-fd-sync>↻ Pull in collected meals</button>
+      <span class="goal__hint" id="fdSyncStatus" style="align-self:center"></span>
+    </div>`;
 
   const addForm = `
     <div class="card" style="flex-direction:column;align-items:stretch;gap:12px;margin-bottom:18px">
@@ -85,5 +123,5 @@ function renderFood(db) {
     (items.length ? items.map((i) => foodRow(db, i)).join("")
       : `<p class="goal__hint" style="margin:0 0 6px">Nothing in yet.</p>`);
 
-  wrap.innerHTML = addForm + soonHTML + list("❄️ Freezer", freezer) + list("🧊 Fridge", fridge);
+  wrap.innerHTML = mealSync + addForm + soonHTML + list("❄️ Freezer", freezer) + list("🧊 Fridge", fridge);
 }

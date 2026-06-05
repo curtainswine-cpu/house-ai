@@ -510,6 +510,21 @@ function wireEvents() {
     const delFood = e.target.closest("[data-del-food]");
     if (delFood) { deleteFood(DB, delFood.dataset.delFood); render(); return; }
 
+    // Food: pull in dishes collected from Mum (meal app)
+    if (e.target.closest("[data-fd-sync]")) {
+      const status = document.getElementById("fdSyncStatus");
+      if (status) status.textContent = "Checking…";
+      syncCollectedMeals(DB).then((r) => {
+        if (r.ok) { render();
+          const s = document.getElementById("fdSyncStatus");
+          if (s) s.textContent = r.added ? `Added ${r.added} 🎉` : "Up to date";
+        } else if (status) {
+          status.textContent = r.status === 404 ? "Not connected yet — run the database step." : "Couldn't reach the meal app.";
+        }
+      });
+      return;
+    }
+
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
     if (e.target.closest("[data-cal-refresh]")) { connectCalendar(DB); return; }
@@ -544,6 +559,9 @@ if (DB.finance.csvUrl) {
 
 /* Quietly refresh the calendar on load (cached events already show). */
 calendarBootstrap(DB);
+
+/* Quietly pull in any newly-collected meals from the meal app, then re-render. */
+syncCollectedMeals(DB).then((r) => { if (r.ok && r.added) render(); });
 
 /* Register the service worker so JARVIS installs to the home screen and
    works offline. Fails silently on file:// (which is fine). */

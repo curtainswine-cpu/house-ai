@@ -123,7 +123,10 @@ function defaultData() {
     },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
-    food: { items: [] }, // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added}
+    food: {
+      items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
+      importedIds: [],   // meal-app dish ids already pulled in (so we don't re-add)
+    },
 
     // Learn Punjabi — starter words (verify/correct freely; add your own).
     punjabi: {
@@ -168,6 +171,7 @@ function normalize(db) {
   if (!db.calendar.owner && db.calendar.connectedOnce) db.calendar.owner = "kirsten";
   if (!db.punjabi || !Array.isArray(db.punjabi.words)) db.punjabi = d.punjabi;
   if (!db.food || !Array.isArray(db.food.items)) db.food = d.food;
+  if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
