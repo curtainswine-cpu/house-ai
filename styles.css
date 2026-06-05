@@ -326,6 +326,8 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .shift-banner.shift--work  { background: var(--gold-soft);   border-color: var(--gold); }
 .shift-banner.shift--night { background: rgba(108,123,176,.16); border-color: #6c7bb0; }
 .shift-banner.shift--off   { background: var(--accent-soft); border-color: var(--accent); }
+.shift-banner .btn--mini, .shift-banner .link-btn { margin-top: 8px; margin-right: 6px; }
+.lift-actions { display: inline-flex; gap: 6px; margin-left: 4px; }
 
 /* ---------- Rest ("do nothing") day ---------- */
 #restToggle[aria-pressed="true"] {

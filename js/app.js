@@ -528,10 +528,16 @@ function wireEvents() {
       return;
     }
 
-    // Jack's schedule: work-from-home + lift request
+    // Jack's schedule: work-from-home + lift request (with day-in-advance + yes/no)
     if (e.target.closest("[data-wfh-toggle]")) { toggleWfh(DB, DB.activePerson, todayKey()); render(); return; }
-    if (e.target.closest("[data-lift-request]")) { requestLift(DB, todayKey()); render(); return; }
-    if (e.target.closest("[data-lift-cancel]")) { cancelLift(DB, todayKey()); render(); return; }
+    const liftAsk = e.target.closest("[data-lift-ask]");
+    if (liftAsk) { setLiftStatus(DB, liftAsk.dataset.liftAsk, "asked"); render(); return; }
+    const liftCancel = e.target.closest("[data-lift-cancel]");
+    if (liftCancel) { setLiftStatus(DB, liftCancel.dataset.liftCancel, null); render(); return; }
+    const liftYes = e.target.closest("[data-lift-yes]");
+    if (liftYes) { setLiftStatus(DB, liftYes.dataset.liftYes, "yes"); render(); return; }
+    const liftNo = e.target.closest("[data-lift-no]");
+    if (liftNo) { setLiftStatus(DB, liftNo.dataset.liftNo, "no"); render(); return; }
 
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }

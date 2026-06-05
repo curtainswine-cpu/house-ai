@@ -182,27 +182,20 @@ function renderTodayCalendar(db) {
     const workToday = isWorkDayToday(person);
     const wfhToday = isWfh(db, person.id, tk);
 
-    let controls = "";
-    if (workToday) {
-      controls += `<button class="btn btn--mini ${wfhToday ? "" : "btn--quiet"}" data-wfh-toggle aria-pressed="${wfhToday}">🏠 ${wfhToday ? "Working from home ✓" : "Work from home today"}</button>`;
-      // Lift only on the calendar person's day off, and only if not WFH.
-      if (ownerOffToday(db) && !wfhToday) {
-        const requested = (db.liftRequests || {})[tk];
-        controls += requested
-          ? `<button class="btn btn--mini btn--quiet" data-lift-cancel>🚗 Lift requested ✓</button>`
-          : `<button class="btn btn--mini" data-lift-request>🚗 Request a lift</button>`;
-      }
-    }
+    const controls = workToday
+      ? `<div class="goal__actions"><button class="btn btn--mini ${wfhToday ? "" : "btn--quiet"}" data-wfh-toggle aria-pressed="${wfhToday}">🏠 ${wfhToday ? "Working from home ✓" : "Work from home today"}</button></div>`
+      : "";
 
     wrap.innerHTML = `
       <div class="cal">
         <div class="cal__head">📅 Today's schedule</div>
         ${todayHTML}
         ${person.work.note ? `<p class="goal__hint">${escapeHTML(person.work.note)}</p>` : ""}
-        ${controls ? `<div class="goal__actions">${controls}</div>` : ""}
+        ${controls}
         <div class="goal__actions"><button class="link-btn" data-cal-week>see this week</button></div>
         <div id="calWeek" hidden>${weekHTML}</div>
-      </div>`;
+      </div>
+      ${liftBlockForJack(db, person, wfhToday)}`;
     return;
   }
 
@@ -293,12 +286,46 @@ function toggleWfh(db, personId, dateKey) {
   else db.workOverrides[k] = "wfh";
   saveDB(db);
 }
-function requestLift(db, dateKey) { (db.liftRequests = db.liftRequests || {})[dateKey] = true; saveDB(db); }
-function cancelLift(db, dateKey) { if (db.liftRequests) delete db.liftRequests[dateKey]; saveDB(db); }
-/* Is the calendar person (Kirsten) off today? (so she could give a lift) */
-function ownerOffToday(db) {
-  const s = todayShift(db);
-  return !!(s && (s.type === "off" || s.type === "annualleave"));
+/* Lift requests now carry a status: 'asked' | 'yes' | 'no'. */
+function setLiftStatus(db, dateKey, status) {
+  if (!db.liftRequests) db.liftRequests = {};
+  if (status) db.liftRequests[dateKey] = status;
+  else delete db.liftRequests[dateKey];
+  saveDB(db);
+}
+function liftStatus(db, dateKey) { return (db.liftRequests || {})[dateKey]; }
+
+function tomorrowKey() { return todayKey(new Date(Date.now() + 86400000)); }
+function relDayLabel(dateKey) {
+  if (dateKey === todayKey()) return "today";
+  if (dateKey === tomorrowKey()) return "tomorrow";
+  return new Date(dateKey + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" });
+}
+/* Is the calendar person (Kirsten) NOT working on a given date? (could give a lift) */
+function ownerWorkingOn(db, dateKey) {
+  return eventsOn(db, dateKey).some((e) =>
+    ["longday", "night", "early", "late", "work"].includes(classifyShift(e.summary)));
+}
+function ownerOffOnDate(db, dateKey) {
+  return !!db.calendar.connectedOnce && !ownerWorkingOn(db, dateKey);
+}
+
+/* Lift banners shown on Jack's schedule: today's status + tomorrow's ask. */
+function liftBlockForJack(db) {
+  const tk = todayKey(), tmrw = tomorrowKey();
+  let html = "";
+  const stToday = liftStatus(db, tk);
+  if (stToday === "yes") html += `<div class="shift-banner shift--off">🚗 Lift from Kirsten today ✓</div>`;
+  else if (stToday === "asked") html += `<div class="shift-banner shift--work">⏳ Lift asked for today — waiting to hear. <button class="link-btn" data-lift-cancel="${tk}">cancel</button></div>`;
+
+  if (ownerOffOnDate(db, tmrw)) {
+    const st = liftStatus(db, tmrw);
+    if (!st) html += `<div class="shift-banner shift--work">🚗 Kirsten's off tomorrow — want to ask for a lift? <button class="btn btn--mini" data-lift-ask="${tmrw}">Ask for a lift</button></div>`;
+    else if (st === "asked") html += `<div class="shift-banner shift--work">⏳ Lift asked for tomorrow — waiting for Kirsten. <button class="link-btn" data-lift-cancel="${tmrw}">cancel</button></div>`;
+    else if (st === "yes") html += `<div class="shift-banner shift--off">🚗 Lift confirmed for tomorrow ✓</div>`;
+    else if (st === "no") html += `<div class="shift-banner shift--night">🚗 No lift tomorrow — Kirsten can't this time.</div>`;
+  }
+  return html;
 }
 
 /* Build pseudo-events for a work-pattern person (e.g. Jack) so their regular
@@ -378,11 +405,21 @@ function renderShiftBanner(db) {
   };
   const [cls, emoji, msg] = C[s.type] || ["", "", ""];
   let html = msg ? `<div class="shift-banner ${cls}">${emoji} ${msg}</div>` : "";
-  // If your partner has asked for a lift today, surface it here.
-  if ((db.liftRequests || {})[todayKey()]) {
-    const partner = db.people.find((p) => p.id !== db.activePerson);
-    html += `<div class="shift-banner shift--work">🚗 ${escapeHTML(partner ? partner.name : "They")}'s asked for a lift today.</div>`;
-  }
+
+  // Lift requests from your partner — respond yes/no (today + tomorrow).
+  const partner = db.people.find((p) => p.id !== db.activePerson);
+  const pName = partner ? partner.name : "They";
+  [todayKey(), tomorrowKey()].forEach((dk) => {
+    const st = liftStatus(db, dk);
+    const when = relDayLabel(dk);
+    if (st === "asked") {
+      html += `<div class="shift-banner shift--work">🚗 ${escapeHTML(pName)}'s asked for a lift ${when}.
+        <span class="lift-actions"><button class="btn btn--mini" data-lift-yes="${dk}">Yes</button>
+        <button class="btn btn--mini btn--quiet" data-lift-no="${dk}">No</button></span></div>`;
+    } else if (st === "yes") {
+      html += `<div class="shift-banner shift--off">🚗 You're giving ${escapeHTML(pName)} a lift ${when}. <button class="link-btn" data-lift-no="${dk}">change</button></div>`;
+    }
+  });
   wrap.innerHTML = html;
 }
 
