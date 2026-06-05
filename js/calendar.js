@@ -177,12 +177,29 @@ function renderTodayCalendar(db) {
   // A work-pattern person (Jack) gets a calendar-type view built from their hours.
   const person = db.people.find((p) => p.id === db.activePerson);
   if (person && person.work) {
-    const { todayHTML, weekHTML } = scheduleHTML(generateWorkEvents(person, 7), "Not a work day today.");
+    const { todayHTML, weekHTML } = scheduleHTML(generateWorkEvents(db, person, 7), "Not a work day today.");
+    const tk = todayKey();
+    const workToday = isWorkDayToday(person);
+    const wfhToday = isWfh(db, person.id, tk);
+
+    let controls = "";
+    if (workToday) {
+      controls += `<button class="btn btn--mini ${wfhToday ? "" : "btn--quiet"}" data-wfh-toggle aria-pressed="${wfhToday}">🏠 ${wfhToday ? "Working from home ✓" : "Work from home today"}</button>`;
+      // Lift only on the calendar person's day off, and only if not WFH.
+      if (ownerOffToday(db) && !wfhToday) {
+        const requested = (db.liftRequests || {})[tk];
+        controls += requested
+          ? `<button class="btn btn--mini btn--quiet" data-lift-cancel>🚗 Lift requested ✓</button>`
+          : `<button class="btn btn--mini" data-lift-request>🚗 Request a lift</button>`;
+      }
+    }
+
     wrap.innerHTML = `
       <div class="cal">
         <div class="cal__head">📅 Today's schedule</div>
         ${todayHTML}
         ${person.work.note ? `<p class="goal__hint">${escapeHTML(person.work.note)}</p>` : ""}
+        ${controls ? `<div class="goal__actions">${controls}</div>` : ""}
         <div class="goal__actions"><button class="link-btn" data-cal-week>see this week</button></div>
         <div id="calWeek" hidden>${weekHTML}</div>
       </div>`;
@@ -265,15 +282,39 @@ function todayShift(db) {
   return { type: "off" };
 }
 
+/* WFH marks + lift requests (kept per date). */
+function isWfh(db, personId, dateKey) {
+  return (db.workOverrides || {})[personId + "|" + dateKey] === "wfh";
+}
+function toggleWfh(db, personId, dateKey) {
+  const k = personId + "|" + dateKey;
+  if (!db.workOverrides) db.workOverrides = {};
+  if (db.workOverrides[k] === "wfh") delete db.workOverrides[k];
+  else db.workOverrides[k] = "wfh";
+  saveDB(db);
+}
+function requestLift(db, dateKey) { (db.liftRequests = db.liftRequests || {})[dateKey] = true; saveDB(db); }
+function cancelLift(db, dateKey) { if (db.liftRequests) delete db.liftRequests[dateKey]; saveDB(db); }
+/* Is the calendar person (Kirsten) off today? (so she could give a lift) */
+function ownerOffToday(db) {
+  const s = todayShift(db);
+  return !!(s && (s.type === "off" || s.type === "annualleave"));
+}
+
 /* Build pseudo-events for a work-pattern person (e.g. Jack) so their regular
-   hours render like a calendar. */
-function generateWorkEvents(person, days) {
+   hours render like a calendar. Reflects any "work from home" mark. */
+function generateWorkEvents(db, person, days) {
   const w = person.work || {};
   const out = [];
   for (let i = 0; i < (days || 7); i++) {
     const d = new Date(); d.setDate(d.getDate() + i);
     if ((w.days || []).includes(d.getDay())) {
-      out.push({ summary: `Work · ${w.start}–${w.end}`, start: todayKey(d) + "T" + (w.start || "09:00") + ":00", allDay: false });
+      const dk = todayKey(d);
+      const wfh = isWfh(db, person.id, dk);
+      out.push({
+        summary: `${wfh ? "🏠 Working from home" : "Work"} · ${w.start}–${w.end}`,
+        start: dk + "T" + (w.start || "09:00") + ":00", allDay: false,
+      });
     }
   }
   return out;
@@ -336,8 +377,13 @@ function renderShiftBanner(db) {
     off:         ["shift--off", "🎉", `Day off — a good one for the gym, a laundry step, or simply resting.`],
   };
   const [cls, emoji, msg] = C[s.type] || ["", "", ""];
-  if (!msg) { wrap.innerHTML = ""; return; }
-  wrap.innerHTML = `<div class="shift-banner ${cls}">${emoji} ${msg}</div>`;
+  let html = msg ? `<div class="shift-banner ${cls}">${emoji} ${msg}</div>` : "";
+  // If your partner has asked for a lift today, surface it here.
+  if ((db.liftRequests || {})[todayKey()]) {
+    const partner = db.people.find((p) => p.id !== db.activePerson);
+    html += `<div class="shift-banner shift--work">🚗 ${escapeHTML(partner ? partner.name : "They")}'s asked for a lift today.</div>`;
+  }
+  wrap.innerHTML = html;
 }
 
 /* ---- Setup modal: paste the OAuth Client ID ---- */

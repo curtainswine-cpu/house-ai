@@ -101,6 +101,8 @@ function defaultData() {
       hours: { weekday: "05:00–23:00", weekend: "06:00–22:00" }, // editable if they change
     },
     restDays: {},                      // "YYYY-MM-DD" -> true (a chosen do-nothing day)
+    workOverrides: {},                 // "personId|YYYY-MM-DD" -> "wfh"
+    liftRequests: {},                  // "YYYY-MM-DD" -> true (Jack asked for a lift)
     appliedSeeds: {},                  // one-time seed additions already applied
 
     // Link to the existing Google-Sheets finance tracker (set up in the Money tab).
@@ -157,6 +159,8 @@ function normalize(db) {
   if (!db.trackers) db.trackers = {};
   if (!Array.isArray(db.projects)) db.projects = d.projects;
   if (!db.restDays) db.restDays = {};
+  if (!db.workOverrides) db.workOverrides = {};
+  if (!db.liftRequests) db.liftRequests = {};
   if (!db.gym || typeof db.gym !== "object") db.gym = d.gym;
   if (db.gym.perWeek == null) db.gym.perWeek = d.gym.perWeek;
   if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];

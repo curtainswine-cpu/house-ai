@@ -525,6 +525,11 @@ function wireEvents() {
       return;
     }
 
+    // Jack's schedule: work-from-home + lift request
+    if (e.target.closest("[data-wfh-toggle]")) { toggleWfh(DB, DB.activePerson, todayKey()); render(); return; }
+    if (e.target.closest("[data-lift-request]")) { requestLift(DB, todayKey()); render(); return; }
+    if (e.target.closest("[data-lift-cancel]")) { cancelLift(DB, todayKey()); render(); return; }
+
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
     if (e.target.closest("[data-cal-refresh]")) { connectCalendar(DB); return; }
