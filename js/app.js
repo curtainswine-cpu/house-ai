@@ -503,10 +503,13 @@ function wireEvents() {
       if (!name) { document.getElementById("fdName").focus(); return; }
       const where = document.querySelector('#fdWhere [aria-pressed="true"]').dataset.fdWhere;
       const useBy = document.getElementById("fdUseBy").value || null;
-      addFood(DB, { name, where, useBy });
+      const qty = document.getElementById("fdQty").value;
+      addFood(DB, { name, where, useBy, qty });
       render();
       return;
     }
+    const useOne = e.target.closest("[data-food-useone]");
+    if (useOne) { useOneFood(DB, useOne.dataset.foodUseone); render(); return; }
     const delFood = e.target.closest("[data-del-food]");
     if (delFood) { deleteFood(DB, delFood.dataset.delFood); render(); return; }
 

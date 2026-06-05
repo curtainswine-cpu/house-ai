@@ -13,23 +13,30 @@ const MEAL_SUPABASE_KEY = "sb_publishable_awfUJeR7Y-JX0K9eYFf6IA_qYn-tmr1";
 async function syncCollectedMeals(db) {
   try {
     const res = await fetch(
-      `${MEAL_SUPABASE_URL}/rest/v1/collected_dishes?select=id,name,collected_at&order=collected_at.desc`,
+      `${MEAL_SUPABASE_URL}/rest/v1/collected_dishes?select=id,name,collected_at,portions&order=collected_at.desc`,
       { headers: { apikey: MEAL_SUPABASE_KEY, Authorization: "Bearer " + MEAL_SUPABASE_KEY }, cache: "no-store" }
     );
     if (!res.ok) return { ok: false, status: res.status };
     const dishes = await res.json();
     if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
-    let added = 0;
+    let added = 0, updated = 0;
     dishes.forEach((d) => {
-      if (!d.id || db.food.importedIds.includes(d.id)) return;
-      let useBy = null;
-      if (d.collected_at) { const dt = new Date(d.collected_at); dt.setDate(dt.getDate() + 90); useBy = todayKey(dt); }
-      db.food.items.push({ id: uid(), name: d.name || "Meal from Mum", where: "freezer", useBy, added: todayKey(), note: "From Mum's" });
-      db.food.importedIds.push(d.id);
-      added++;
+      if (!d.id) return;
+      const qty = Math.max(1, Number(d.portions) || 1);
+      const existing = db.food.items.find((i) => i.mealId === d.id);
+      if (existing) {
+        if (existing.qty !== qty) { existing.qty = qty; updated++; } // mum amended the portions
+      } else if (!db.food.importedIds.includes(d.id)) {
+        let useBy = null;
+        if (d.collected_at) { const dt = new Date(d.collected_at); dt.setDate(dt.getDate() + 90); useBy = todayKey(dt); }
+        db.food.items.push({ id: uid(), mealId: d.id, name: d.name || "Meal from Mum", qty, where: "freezer", useBy, added: todayKey(), note: "From Mum's" });
+        db.food.importedIds.push(d.id);
+        added++;
+      }
+      // else: previously imported then deleted (used up) — leave it gone
     });
-    if (added) saveDB(db);
-    return { ok: true, added };
+    if (added || updated) saveDB(db);
+    return { ok: true, added, updated };
   } catch (e) {
     return { ok: false, error: "network" };
   }
@@ -43,12 +50,20 @@ function daysUntil(dateStr) {
   return Math.round((d - n) / 86400000);
 }
 
-function addFood(db, { name, where, useBy }) {
-  db.food.items.push({ id: uid(), name, where: where || "fridge", useBy: useBy || null, added: todayKey() });
+function addFood(db, { name, where, useBy, qty }) {
+  db.food.items.push({ id: uid(), name, where: where || "fridge", useBy: useBy || null, qty: Math.max(1, Number(qty) || 1), added: todayKey() });
   saveDB(db);
 }
 function deleteFood(db, id) {
   db.food.items = db.food.items.filter((i) => i.id !== id);
+  saveDB(db);
+}
+/* Use one portion — decrement, removing the item when it hits zero. */
+function useOneFood(db, id) {
+  const i = db.food.items.find((x) => x.id === id);
+  if (!i) return;
+  i.qty = (i.qty || 1) - 1;
+  if (i.qty <= 0) db.food.items = db.food.items.filter((x) => x.id !== id);
   saveDB(db);
 }
 
@@ -69,13 +84,17 @@ function useByTag(useBy) {
 }
 
 function foodRow(db, i) {
+  const qty = i.qty || 1;
+  const qtyTag = qty > 1 ? `<span class="tag tag--time">×${qty}</span>` : "";
   const src = i.note ? `<span class="tag">${escapeHTML(i.note)}</span>` : "";
+  const useBtn = qty > 1 ? `<button class="btn btn--mini btn--quiet" data-food-useone="${i.id}">− use one</button>` : "";
   return `
     <article class="card routine routine--compact food-item">
       <div class="card__main">
-        <div class="card__title">${escapeHTML(i.name)}</div>
+        <div class="card__title">${escapeHTML(i.name)} ${qtyTag}</div>
         <div class="card__meta">${useByTag(i.useBy)}${src}</div>
       </div>
+      ${useBtn}
       <button class="icon-btn" data-del-food="${i.id}" aria-label="Remove">🗑️</button>
     </article>`;
 }
@@ -101,6 +120,8 @@ function renderFood(db) {
         <button class="chip" data-fd-where="fridge" aria-pressed="true">🧊 Fridge</button>
         <button class="chip" data-fd-where="freezer" aria-pressed="false">❄️ Freezer</button>
       </div>
+      <div class="field"><label for="fdQty">How many?</label>
+        <input id="fdQty" type="number" inputmode="numeric" min="1" step="1" value="1" /></div>
       <div class="field"><label for="fdUseBy">Use by (optional)</label>
         <input id="fdUseBy" type="date" /></div>
       <button class="btn btn--primary btn--block" data-fd-add>Add to list</button>
