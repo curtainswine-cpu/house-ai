@@ -68,6 +68,7 @@ function renderHomeNav(db) {
   const soon = foodUseSoon(db).length;
 
   const tiles = [
+    { view: "calendar", icon: "📅", label: "Calendar", sub: "everything ahead" },
     { view: "tasks", icon: "📋", label: TASKS_NAME, sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
     { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
@@ -122,6 +123,7 @@ function render() {
   // Home (calm hub)
   renderShiftBanner(DB);
   renderTodayCalendar(DB);
+  renderFullCalendar(DB);
   renderHomeNav(DB);
 
   // The other pages

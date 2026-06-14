@@ -97,9 +97,10 @@ function calAuth() { return { Authorization: "Bearer " + _calToken }; }
 async function fetchWeekEvents() {
   if (!calendarConnected()) return;
   const now = new Date();
-  // From yesterday → +7 days (yesterday lets us spot "post-night" mornings).
+  // From yesterday → +42 days, so one-off bookings later in the month show too
+  // (yesterday lets us spot "post-night" mornings).
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()); end.setDate(end.getDate() + 7);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()); end.setDate(end.getDate() + 42);
   const tMin = encodeURIComponent(start.toISOString());
   const tMax = encodeURIComponent(end.toISOString());
   try {
@@ -108,9 +109,12 @@ async function fetchWeekEvents() {
     const cals = (await listRes.json()).items || [];
     let all = [];
     for (const cal of cals) {
-      if (cal.selected === false) continue; // respect hidden calendars
+      const cid = cal.id || "";
+      // Read ALL your calendars (work, personal, family) — only skip noisy
+      // auto-calendars (public holidays, birthdays).
+      if (/holiday.*@group\.v\.calendar\.google\.com$/i.test(cid) || cid.includes("#contacts")) continue;
       const url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(cal.id)
-        + "/events?singleEvents=true&orderBy=startTime&maxResults=50&timeMin=" + tMin + "&timeMax=" + tMax;
+        + "/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=" + tMin + "&timeMax=" + tMax;
       const r = await fetch(url, { headers: calAuth() });
       if (!r.ok) continue;
       const items = (await r.json()).items || [];
@@ -144,6 +148,49 @@ function eventRow(e) {
   // Show the source calendar name (e.g. "Loop", "Family") but never your email.
   const src = (e.cal && !e.cal.includes("@")) ? ` <span class="cal__src">${escapeHTML(e.cal)}</span>` : "";
   return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}${src}</span></li>`;
+}
+function calDayLabel(d) {
+  const dk = todayKey(d);
+  if (dk === todayKey()) return "Today";
+  if (dk === tomorrowKey()) return "Tomorrow";
+  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+}
+
+/* ---- Full Calendar view: EVERYTHING ahead (6 weeks), all calendars ---- */
+function renderFullCalendar(db) {
+  const wrap = document.getElementById("fullCalendar");
+  if (!wrap) return;
+  const person = db.people.find((p) => p.id === db.activePerson);
+  const isWorkPerson = !!(person && person.work);
+
+  let events;
+  if (isWorkPerson) {
+    events = generateWorkEvents(db, person, 42);
+  } else {
+    if (!calendarConfigured(db) || !db.calendar.connectedOnce) {
+      wrap.innerHTML = `<div class="cal"><div class="cal__head">📅 Calendar</div>
+        <p class="goal__hint">Connect Google to see your whole calendar here.</p>
+        <div class="goal__actions"><button class="btn btn--mini" data-cal-refresh>Connect Google</button></div></div>`;
+      return;
+    }
+    events = db.calendar.lastEvents || [];
+  }
+
+  let body = "";
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const evs = eventsForDay(events, todayKey(d));
+    if (!evs.length) continue;
+    body += `<div class="cal__day">
+      <div class="cal__dayname">${calDayLabel(d)}</div>
+      <ul class="cal__list">${evs.map(eventRow).join("")}</ul></div>`;
+  }
+  if (!body) body = `<p class="goal__hint">Nothing booked in the next 6 weeks.</p>`;
+
+  const updated = (!isWorkPerson && db.calendar.lastFetched)
+    ? `<span class="cal__sync">updated ${formatAgo(db.calendar.lastFetched)}</span>` : "";
+  const refresh = isWorkPerson ? "" : `<div class="goal__actions"><button class="btn btn--mini" data-cal-refresh>↻ Refresh</button></div>`;
+  wrap.innerHTML = `<div class="cal"><div class="cal__head">📅 Everything ahead ${updated}</div>${body}${refresh}</div>`;
 }
 
 /* Is the connected calendar the active person's? (It belongs to whoever signed in.) */
