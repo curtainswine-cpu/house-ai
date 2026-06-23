@@ -134,6 +134,9 @@ function defaultData() {
       ],
     },
 
+    // Events Kirsten adds for Jack (anniversaries, appointments etc.)
+    jackEvents: [],
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -187,6 +190,7 @@ function normalize(db) {
   if (!db.food || !Array.isArray(db.food.items)) db.food = d.food;
   if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
   if (!db.shopping || !Array.isArray(db.shopping.lists)) db.shopping = d.shopping;
+  if (!Array.isArray(db.jackEvents)) db.jackEvents = [];
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {

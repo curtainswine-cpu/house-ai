@@ -146,8 +146,29 @@ function eventTime(e) {
 }
 function eventRow(e) {
   // Show the source calendar name (e.g. "Loop", "Family") but never your email.
-  const src = (e.cal && !e.cal.includes("@")) ? ` <span class="cal__src">${escapeHTML(e.cal)}</span>` : "";
-  return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}${src}</span></li>`;
+  const srcClass = e.srcType === "kirsten" ? " cal__src--kirsten" : e.srcType === "jack" ? " cal__src--jack" : "";
+  const src = (e.cal && !e.cal.includes("@")) ? ` <span class="cal__src${srcClass}">${escapeHTML(e.cal)}</span>` : "";
+  return `<li><span class="cal__time">${eventTime(e)}</span><span>${escapeHTML(e.summary)}${src}</span>
+    ${e.srcType === "jack" && e.jackEventId ? `<button class="icon-btn cal__edit-jack" data-edit-jack-event="${e.jackEventId}" title="Edit">✎</button>` : ""}</li>`;
+}
+
+/* Build Kirsten's Google events tagged for display in Jack's view. */
+function kirstenEventsForJack(db) {
+  return (db.calendar.lastEvents || []).map((e) => ({
+    ...e, cal: e.cal || "Kirsten", srcType: "kirsten",
+  }));
+}
+
+/* Build Jack-specific events (added by Kirsten) as calendar items. */
+function jackPersonalEventsAsCalendar(db) {
+  return (db.jackEvents || []).map((e) => ({
+    summary: e.title,
+    start: e.allDay || !e.time ? e.date : e.date + "T" + e.time + ":00",
+    allDay: e.allDay || !e.time,
+    cal: "For Jack",
+    srcType: "jack",
+    jackEventId: e.id,
+  }));
 }
 function calDayLabel(d) {
   const dk = todayKey(d);
@@ -165,7 +186,11 @@ function renderFullCalendar(db) {
 
   let events;
   if (isWorkPerson) {
-    events = generateWorkEvents(db, person, 42);
+    // Jack: merge his work schedule + Kirsten's calendar + events she's added for him
+    const workEvts = generateWorkEvents(db, person, 42);
+    const kirstenEvts = kirstenEventsForJack(db);
+    const jackEvts = jackPersonalEventsAsCalendar(db);
+    events = [...workEvts, ...kirstenEvts, ...jackEvts].sort((a, b) => a.start > b.start ? 1 : -1);
   } else {
     if (!calendarConfigured(db) || !db.calendar.connectedOnce) {
       wrap.innerHTML = `<div class="cal"><div class="cal__head">📅 Calendar</div>
@@ -189,8 +214,17 @@ function renderFullCalendar(db) {
 
   const updated = (!isWorkPerson && db.calendar.lastFetched)
     ? `<span class="cal__sync">updated ${formatAgo(db.calendar.lastFetched)}</span>` : "";
-  const refresh = isWorkPerson ? "" : `<div class="goal__actions"><button class="btn btn--mini" data-cal-refresh>↻ Refresh</button></div>`;
-  wrap.innerHTML = `<div class="cal"><div class="cal__head">📅 Everything ahead ${updated}</div>${body}${refresh}</div>`;
+
+  // Kirsten sees a Refresh button and an "Add event for Jack" button on the full calendar
+  const isKirsten = db.activePerson === "kirsten";
+  const calActions = isWorkPerson
+    ? `<div class="goal__actions"><button class="btn btn--mini" data-add-jack-event>+ Add event for Jack</button></div>`
+    : `<div class="goal__actions">
+        <button class="btn btn--mini" data-cal-refresh>↻ Refresh</button>
+        <button class="btn btn--mini btn--quiet" data-add-jack-event>+ Add event for Jack</button>
+      </div>`;
+
+  wrap.innerHTML = `<div class="cal"><div class="cal__head">📅 Everything ahead ${updated}</div>${body}${calActions}</div>`;
 }
 
 /* Is the connected calendar the active person's? (It belongs to whoever signed in.) */
@@ -233,12 +267,22 @@ function renderTodayCalendar(db) {
       ? `<div class="goal__actions"><button class="btn btn--mini ${wfhToday ? "" : "btn--quiet"}" data-wfh-toggle aria-pressed="${wfhToday}">🏠 ${wfhToday ? "Working from home ✓" : "Work from home today"}</button></div>`
       : "";
 
+    // Show Kirsten's plans for today below Jack's schedule
+    const kirstenToday = eventsForDay(kirstenEventsForJack(db), tk);
+    const jackEvtsToday = eventsForDay(jackPersonalEventsAsCalendar(db), tk);
+    const sharedToday = [...kirstenToday, ...jackEvtsToday].sort((a, b) => a.start > b.start ? 1 : -1);
+    const sharedHTML = sharedToday.length
+      ? `<div class="cal__head" style="margin-top:14px;font-size:.85rem">Kirsten's plans today</div>
+         <ul class="cal__list">${sharedToday.map(eventRow).join("")}</ul>`
+      : "";
+
     wrap.innerHTML = `
       <div class="cal">
         <div class="cal__head">📅 Today's schedule</div>
         ${todayHTML}
         ${person.work.note ? `<p class="goal__hint">${escapeHTML(person.work.note)}</p>` : ""}
         ${controls}
+        ${sharedHTML}
         <div class="goal__actions"><button class="link-btn" data-cal-week>see this week</button></div>
         <div id="calWeek" hidden>${weekHTML}</div>
       </div>

@@ -470,6 +470,36 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 }
 .tvar-row input[type="time"]:focus { color: var(--accent); }
 
+/* Jack's task load panel — shown to Kirsten on the Cleaning page */
+.jack-load {
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--line));
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+  box-shadow: 0 0 16px rgba(231,181,74,.06);
+}
+.jack-load__head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px; gap: 8px; flex-wrap: wrap;
+}
+.jack-load__label { font-weight: 650; font-size: .93rem; color: var(--gold); }
+.jack-load__count { font-size: .78rem; color: var(--muted); font-family: var(--mono); }
+.jack-load__item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-top: 1px solid var(--line);
+}
+.jack-load__item.is-done .jack-load__item-title { text-decoration: line-through; color: var(--muted); opacity: .5; }
+.jack-load__item-title { flex: 1; font-size: .9rem; }
+.jack-load__empty { color: var(--muted); font-size: .85rem; margin: 0 0 10px; line-height: 1.5; }
+.jack-load__alloc { margin-top: 10px; font-size: .85rem; }
+
+/* Calendar source labels — per-person colour coding */
+.cal__src--kirsten { background: var(--accent-soft); color: var(--accent); }
+.cal__src--jack { background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); }
+.cal__edit-jack {
+  margin-left: 4px; font-size: .8rem; opacity: .5; vertical-align: middle;
+  padding: 1px 4px;
+}
+.cal__edit-jack:hover { opacity: 1; }
+
 /* ---------- Projects: one next step ---------- */
 .project {
   margin-bottom: 10px; background: var(--surface); border: 1px solid var(--line);

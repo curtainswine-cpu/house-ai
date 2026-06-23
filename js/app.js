@@ -67,14 +67,17 @@ function renderHomeNav(db) {
   const choresDone = chores.filter((r) => isDone(db, r.id, dateKey)).length;
   const soon = foodUseSoon(db).length;
 
+  const isKirsten = db.activePerson === "kirsten";
   const tiles = [
     { view: "calendar", icon: "📅", label: "Calendar", sub: "everything ahead" },
-    { view: "tasks", icon: "📋", label: TASKS_NAME, sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
+    { view: "tasks", icon: "📋", label: isKirsten ? TASKS_NAME : "My tasks", sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
     { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
-    { view: "health", icon: "💗", label: "Health", sub: "water · steps · gym" },
-    { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
+    ...(isKirsten ? [
+      { view: "health", icon: "💗", label: "Health", sub: "water · steps · gym" },
+      { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
+    ] : []),
     { view: "manage", icon: "🔁", label: "Routines", sub: "manage" },
   ];
   if (db.finance.csvUrl || db.finance.sheetUrl) {
@@ -101,9 +104,10 @@ function render() {
 
   renderPersonToggle();
 
-  // Rest day reframes the whole Today screen — no pressure, no guilt
+  // Rest day reframes the whole Today screen — no pressure, no guilt (Kirsten only)
   const rest = isRestDay(DB, todayKey());
   const restBtn = document.getElementById("restToggle");
+  restBtn.hidden = DB.activePerson !== "kirsten";
   restBtn.setAttribute("aria-pressed", rest);
   restBtn.textContent = rest ? "🌙 Rest day: on" : "🌙 Rest day";
   document.getElementById("view-today").classList.toggle("is-rest", rest);
@@ -131,6 +135,7 @@ function render() {
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
   renderCleaning(DB);        // Cleaning
+  renderJackLoad(DB);        // Jack's task load panel (Kirsten's cleaning view)
   renderShopping(DB);        // Shopping (sticky notes)
   renderFood(DB);            // Food
   renderTodayHealth(DB);     // Health
@@ -161,11 +166,12 @@ function closeModal() {
 
 /* ---------- Add / edit routine ----------
    existing = routine to edit; presetArea = "me"|"cleaning"|"household";
-   presetTimeOfDay = "morning"|"afternoon"|"evening"|"anytime" (for band + buttons) */
-function openRoutineModal(existing, presetArea, presetTimeOfDay) {
+   presetTimeOfDay = "morning"|"afternoon"|"evening"|"anytime" (for band + buttons)
+   presetPerson = person id to pre-assign to (e.g. "jack" when allocating from Kirsten's view) */
+function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
   const r = existing || {
     timeOfDay: presetTimeOfDay || "morning", repeat: "daily", steps: [], time: "",
-    assignedTo: (presetArea && presetArea !== "me") ? "either" : DB.activePerson,
+    assignedTo: presetPerson || ((presetArea && presetArea !== "me") ? "either" : DB.activePerson),
     area: presetArea || "me",
   };
   const isEdit = !!existing;
@@ -417,6 +423,50 @@ function pressOne(groupId, btn) {
   btn.setAttribute("aria-pressed", "true");
 }
 
+/* ---------- Add / edit an event for Jack ---------- */
+function openJackEventModal(existing) {
+  const ev = existing || {};
+  openModal(existing ? "Edit Jack's event" : "Add event for Jack", `
+    <div class="field">
+      <label for="jevTitle">Event</label>
+      <input id="jevTitle" placeholder="e.g. Grandparents' anniversary" value="${escapeHTML(ev.title || "")}" />
+    </div>
+    <div class="field">
+      <label for="jevDate">Date</label>
+      <input id="jevDate" type="date" value="${escapeHTML(ev.date || todayKey())}" />
+    </div>
+    <div class="field">
+      <label for="jevTime">Time <span style="font-weight:400;color:var(--muted)">(optional — leave blank for all day)</span></label>
+      <input id="jevTime" type="time" value="${escapeHTML(ev.time || "")}" />
+    </div>
+    <button class="btn btn--primary btn--block" id="jevSave">${existing ? "Save changes" : "Add to Jack's calendar"}</button>
+    ${existing ? `<button class="btn btn--danger btn--block" style="margin-top:8px" id="jevDelete">Remove event</button>` : ""}
+  `);
+  document.getElementById("jevSave").onclick = () => {
+    const title = document.getElementById("jevTitle").value.trim();
+    if (!title) { document.getElementById("jevTitle").focus(); return; }
+    const time = document.getElementById("jevTime").value || null;
+    const entry = { id: existing ? existing.id : uid(), title, date: document.getElementById("jevDate").value, time, allDay: !time };
+    if (existing) {
+      const idx = DB.jackEvents.findIndex((e) => e.id === existing.id);
+      if (idx > -1) DB.jackEvents[idx] = entry; else DB.jackEvents.push(entry);
+    } else {
+      DB.jackEvents.push(entry);
+    }
+    saveDB(DB);
+    closeModal();
+    render();
+  };
+  if (existing) {
+    document.getElementById("jevDelete").onclick = () => {
+      DB.jackEvents = DB.jackEvents.filter((e) => e.id !== existing.id);
+      saveDB(DB);
+      closeModal();
+      render();
+    };
+  }
+}
+
 /* ---------- Global event wiring ---------- */
 function wireEvents() {
   // Bottom tabs + any element with data-goto
@@ -604,6 +654,18 @@ function wireEvents() {
     // Calendar: setup / connect / show week
     if (e.target.closest("[data-cal-setup]")) { openCalendarSetup(); return; }
     if (e.target.closest("[data-cal-refresh]")) { connectCalendar(DB); return; }
+
+    // Jack calendar events — add / edit
+    if (e.target.closest("[data-add-jack-event]")) { openJackEventModal(); return; }
+    const editJev = e.target.closest("[data-edit-jack-event]");
+    if (editJev) {
+      const ev = DB.jackEvents.find((j) => j.id === editJev.dataset.editJackEvent);
+      if (ev) openJackEventModal(ev);
+      return;
+    }
+
+    // Jack load — allocate a new personal task to Jack
+    if (e.target.closest("[data-allocate-jack]")) { openRoutineModal(null, "me", null, "jack"); return; }
     if (e.target.closest("[data-cal-week]")) {
       const w = document.getElementById("calWeek");
       if (w) w.hidden = !w.hidden;

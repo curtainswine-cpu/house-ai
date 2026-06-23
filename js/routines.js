@@ -404,6 +404,41 @@ function renderCleaning(db) {
   wrap.innerHTML = section("Cleaning", cleaning) + section("Other household", household);
 }
 
+/* ---- Jack's task load panel (shown to Kirsten on the Cleaning page) ----
+   Lets Kirsten see what Jack has been allocated before piling more on. */
+function renderJackLoad(db) {
+  const wrap = document.getElementById("jackLoad");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+
+  const jackTasks = db.routines.filter((r) => r.area === "me" && r.assignedTo === "jack");
+  const dateKey = todayKey();
+  const doneCount = jackTasks.filter((r) => isDone(db, r.id, dateKey)).length;
+
+  let html = `<div class="jack-load">
+    <div class="jack-load__head">
+      <span class="jack-load__label">💛 Jack's tasks</span>
+      <span class="jack-load__count">${jackTasks.length ? `${jackTasks.length} allocated · ${doneCount} done today` : "nothing yet"}</span>
+    </div>`;
+
+  if (!jackTasks.length) {
+    html += `<p class="jack-load__empty">Nothing allocated to Jack personally yet. Add something so you can see his load before piling more on.</p>`;
+  } else {
+    jackTasks.forEach((r) => {
+      const done = isDone(db, r.id, dateKey);
+      html += `<div class="jack-load__item ${done ? "is-done" : ""}">
+        <span class="jack-load__item-title">${escapeHTML(r.title)}</span>
+        <button class="icon-btn" data-edit-routine="${r.id}" aria-label="Edit">✎</button>
+      </div>`;
+    });
+  }
+
+  html += `<button class="btn btn--ghost btn--block jack-load__alloc" data-allocate-jack>+ Allocate something to Jack</button>
+  </div>`;
+
+  wrap.innerHTML = html;
+}
+
 /* Count of done / total for MY personal tasks today (Home summary). */
 function todayProgress(db) {
   const date = new Date();
