@@ -204,9 +204,22 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay) {
       <div class="chip-row" id="rTime">${timeChips}</div>
     </div>
     <div class="field">
-      <label for="rSpecificTime">Specific time <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-      <input id="rSpecificTime" type="time" value="${escapeHTML(r.time || "")}" />
-      <small style="color:var(--muted)">Pin it to a clock time in your day plan — or leave blank to keep it flexible.</small>
+      <label>Times in your day plan <span style="color:var(--muted);font-weight:400">(optional — set per day type)</span></label>
+      <div class="tvar-rows">
+        <div class="tvar-row">
+          <span class="tvar__label">Work day</span>
+          <input id="rTimeWork" type="time" value="${escapeHTML((r.timeVariants && r.timeVariants.work) || r.time || "")}" />
+        </div>
+        <div class="tvar-row">
+          <span class="tvar__label">Day off</span>
+          <input id="rTimeOff" type="time" value="${escapeHTML((r.timeVariants && r.timeVariants.off) || r.time || "")}" />
+        </div>
+        <div class="tvar-row">
+          <span class="tvar__label">Night shift</span>
+          <input id="rTimeNight" type="time" value="${escapeHTML((r.timeVariants && r.timeVariants.night) || r.time || "")}" />
+        </div>
+      </div>
+      <small style="color:var(--muted)">JARVIS shows the right time for today automatically. Leave all blank to stay flexible.</small>
     </div>
     <div class="field">
       <label>How often?</label>
@@ -260,7 +273,12 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay) {
       repeatDay: repeat === "weekly" ? Number(document.getElementById("rDay").value) : undefined,
       anchorDate: repeat === "fortnightly" ? document.getElementById("rAnchor").value : undefined,
       steps,
-      time: document.getElementById("rSpecificTime").value || null,
+      timeVariants: {
+        work:  document.getElementById("rTimeWork").value  || null,
+        off:   document.getElementById("rTimeOff").value   || null,
+        night: document.getElementById("rTimeNight").value || null,
+      },
+      time: null, // cleared when timeVariants takes over
     };
     if (isEdit) Object.assign(r, patch);
     else DB.routines.push(Object.assign({ id: uid() }, patch));

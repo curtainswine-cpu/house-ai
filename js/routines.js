@@ -155,6 +155,22 @@ function formatTime12(t) {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+/* Pick the right clock time for a routine based on today's shift type.
+   Falls back: night → v.night → r.time; work → v.work → r.time; off → v.off → r.time */
+function resolveTime(r, shiftType) {
+  const v = r.timeVariants || {};
+  if (shiftType === "night" || shiftType === "postnight") return v.night || r.time || null;
+  if (!shiftType || shiftType === "off" || shiftType === "annualleave") return v.off || r.time || null;
+  return v.work || r.time || null; // longday, early, late, work
+}
+
+/* Get today's shift type from calendar.js (which must already be loaded). */
+function currentShiftType(db) {
+  if (typeof todayShift !== "function") return null;
+  const s = todayShift(db);
+  return s ? s.type : null;
+}
+
 /* Compact card for the planner — check + title + steps toggle + edit */
 function plannerCardHTML(db, r, dateKey) {
   const done = isDone(db, r.id, dateKey);
@@ -176,7 +192,7 @@ function plannerCardHTML(db, r, dateKey) {
     </article>`;
 }
 
-/* ---- Kirsten: day planner — morning / afternoon / evening ---- */
+/* ---- Kirsten: shift-aware day planner ---- */
 function renderKirstenPlanner(db) {
   const list = document.getElementById("routinesList");
   if (!list) return;
@@ -188,16 +204,46 @@ function renderKirstenPlanner(db) {
     return;
   }
 
-  const BANDS = [
-    { key: "morning",   label: "Morning",   hours: [6,  12] },
-    { key: "afternoon", label: "Afternoon", hours: [12, 18] },
-    { key: "evening",   label: "Evening",   hours: [18, 24] },
+  const shiftType = currentShiftType(db);
+  const isNight = shiftType === "night";
+  const isPostnight = shiftType === "postnight";
+
+  /* Band layout — nights flip morning ↔ evening so the schedule reads
+     chronologically: pre-work evening first, then post-shift morning. */
+  const BANDS = isNight ? [
+    { keys: ["evening", "afternoon"], label: "Before work",  addKey: "evening", hours: [12, 24] },
+    { keys: ["morning"],              label: "Before sleep", addKey: "morning", hours: [0,  12] },
+  ] : isPostnight ? [
+    { keys: ["morning"],   label: "Before sleep",  addKey: "morning",   hours: [0,  12] },
+    { keys: ["afternoon"], label: "Afternoon",      addKey: "afternoon", hours: [12, 18] },
+    { keys: ["evening"],   label: "Evening",        addKey: "evening",   hours: [18, 24] },
+  ] : [
+    { keys: ["morning"],   label: "Morning",   addKey: "morning",   hours: [6,  12] },
+    { keys: ["afternoon"], label: "Afternoon", addKey: "afternoon", hours: [12, 18] },
+    { keys: ["evening"],   label: "Evening",   addKey: "evening",   hours: [18, 24] },
   ];
 
   let html = "";
 
-  // Anytime routines — shown before the time bands
-  const anytime = mine.filter((r) => (r.timeOfDay === "anytime" || !r.timeOfDay) && !r.time);
+  /* Shift context note — tells you which set of times you're looking at */
+  const SHIFT_NOTE = {
+    night:       "🌙 Night shift — showing your pre-work and post-shift routine.",
+    postnight:   "😴 Post-night — focus on rest. Just the essentials before sleep.",
+    off:         "🎉 Day off — your relaxed times.",
+    annualleave: "🏖️ Annual leave — your relaxed times.",
+    longday:     "💪 Long day — your earlier work times.",
+    early:       "🌅 Early shift — your early times today.",
+    late:        "🌆 Late shift — your times for today.",
+    work:        "🏥 Work day — your work times.",
+  };
+  if (shiftType && SHIFT_NOTE[shiftType]) {
+    html += `<div class="planner__shift-note">${SHIFT_NOTE[shiftType]}</div>`;
+  }
+
+  /* Anytime routines: timeOfDay = "anytime" with no resolved clock time */
+  const anytime = mine.filter((r) => {
+    return (r.timeOfDay === "anytime" || !r.timeOfDay) && !resolveTime(r, shiftType);
+  });
   if (anytime.length) {
     html += `<div class="planner__band">
       <div class="planner__band-label">Anytime</div>
@@ -207,21 +253,27 @@ function renderKirstenPlanner(db) {
   }
 
   BANDS.forEach((band) => {
-    // Flexible routines (no clock time set) in this band
-    const flex = mine.filter((r) => r.timeOfDay === band.key && !r.time);
-    // Routines with a specific clock time that falls in this band's hours
+    /* Flexible routines: timeOfDay matches this band, no resolved time today */
+    const flex = mine.filter((r) => {
+      if (resolveTime(r, shiftType)) return false;
+      return band.keys.includes(r.timeOfDay || "anytime");
+    });
+
+    /* Timed routines: resolved clock time falls within this band's hours */
     const timed = mine.filter((r) => {
-      if (!r.time) return false;
-      const h = parseInt(r.time, 10);
+      const t = resolveTime(r, shiftType);
+      if (!t) return false;
+      const h = parseInt(t, 10);
       return h >= band.hours[0] && h < band.hours[1];
-    }).sort((a, b) => a.time.localeCompare(b.time));
+    }).sort((a, b) =>
+      (resolveTime(a, shiftType) || "").localeCompare(resolveTime(b, shiftType) || ""));
 
     html += `<div class="planner__band">`;
     html += `<div class="planner__band-label">${band.label}</div>`;
 
     if (!flex.length && !timed.length) {
       html += `<div class="planner__empty">Nothing planned
-        <button class="link-btn" data-add-at-band="${band.key}">+ Add something</button>
+        <button class="link-btn" data-add-at-band="${band.addKey}">+ Add something</button>
       </div>`;
     } else {
       if (flex.length) {
@@ -234,12 +286,12 @@ function renderKirstenPlanner(db) {
         if (flex.length) html += `<div class="planner__flex-label">Scheduled</div>`;
         timed.forEach((r) => {
           html += `<div class="planner__timed-row">
-            <div class="planner__time-pin">${formatTime12(r.time)}</div>
+            <div class="planner__time-pin">${formatTime12(resolveTime(r, shiftType))}</div>
             <div class="planner__event">${plannerCardHTML(db, r, dateKey)}</div>
           </div>`;
         });
       }
-      html += `<button class="planner__add-btn link-btn" data-add-at-band="${band.key}">+ Add to ${band.label.toLowerCase()}</button>`;
+      html += `<button class="planner__add-btn link-btn" data-add-at-band="${band.addKey}">+ Add to ${band.label.toLowerCase()}</button>`;
     }
 
     html += `</div>`;
