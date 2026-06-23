@@ -391,12 +391,47 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .suggest-meta { font-size: .8rem; color: var(--muted); margin-top: 2px; }
 
 /* ---------- Day planner (Kirsten) + free-flow (Jack) ---------- */
+
+/* Each band has its own colour identity — set via data-band on the container */
+.planner__band[data-band="morning"]   { --band-col: #e7b54a; --band-soft: rgba(231,181,74,.13); }
+.planner__band[data-band="afternoon"] { --band-col: #46d6f5; --band-soft: rgba(70,214,245,.12); }
+.planner__band[data-band="evening"]   { --band-col: #9b8ef5; --band-soft: rgba(155,142,245,.14); }
+.planner__band[data-band="anytime"]   { --band-col: #8a97ad; --band-soft: rgba(138,151,173,.08); }
+
 .planner__band { margin-bottom: 24px; }
 .planner__band-label {
   font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--accent); padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  color: var(--band-col, var(--accent));
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--band-col, var(--line)) 30%, var(--line));
   margin-bottom: 10px;
 }
+
+/* Active band (current time of day) — label glows, subtle background */
+.planner__band.is-active { background: var(--band-soft); border-radius: var(--radius); padding: 12px 14px; margin-left: -14px; margin-right: -14px; }
+.planner__band.is-active .planner__band-label { text-shadow: 0 0 14px var(--band-col); }
+
+/* Past bands — fade back so your eye goes to what's current */
+.planner__band.is-past { opacity: 0.38; }
+
+/* All planner cards get a coloured left stripe matching their band */
+.planner__band .card { border-left: 3px solid var(--band-col, var(--line)); }
+
+/* "Up next" card — glows in the band's colour */
+.planner__card.is-next-up {
+  background: var(--band-soft, var(--accent-soft));
+  border-color: var(--band-col, var(--accent));
+  box-shadow: 0 0 20px var(--band-soft, var(--accent-soft)), 0 2px 8px rgba(0,0,0,.3);
+}
+.planner__card.is-next-up .card__title::before {
+  content: "▶ ";
+  color: var(--band-col, var(--accent));
+  font-size: .78em;
+}
+
+/* Done state in the planner — decisive fade so completed items disappear from focus */
+.planner__card.is-done { opacity: 0.28; }
+.planner__card.is-done .card__title { text-decoration: line-through; }
 .planner__flex-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
 .planner__flex-label {
   font-size: .68rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase;

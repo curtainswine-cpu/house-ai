@@ -171,9 +171,11 @@ function currentShiftType(db) {
   return s ? s.type : null;
 }
 
-/* Compact card for the planner — check + title + steps toggle + edit */
-function plannerCardHTML(db, r, dateKey) {
+/* Compact card for the planner — check + title + steps toggle + edit.
+   opts.nextUp = true marks it as the first undone item in the active band. */
+function plannerCardHTML(db, r, dateKey, opts = {}) {
   const done = isDone(db, r.id, dateKey);
+  const isNextUp = !done && !!opts.nextUp;
   const hasSteps = r.steps && r.steps.length;
   const open = _expandedRoutines.has(r.id);
   const stepsBlock = hasSteps
@@ -182,7 +184,7 @@ function plannerCardHTML(db, r, dateKey) {
       }</button>${open ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : ""}`
     : "";
   return `
-    <article class="card routine routine--compact ${done ? "is-done" : ""}" data-routine="${r.id}">
+    <article class="card routine routine--compact planner__card ${done ? "is-done" : ""} ${isNextUp ? "is-next-up" : ""}" data-routine="${r.id}">
       <button class="check" data-toggle="${r.id}" aria-label="Mark done">✓</button>
       <div class="card__main">
         <div class="card__title">${escapeHTML(r.title)}</div>
@@ -240,19 +242,33 @@ function renderKirstenPlanner(db) {
     html += `<div class="planner__shift-note">${SHIFT_NOTE[shiftType]}</div>`;
   }
 
-  /* Anytime routines: timeOfDay = "anytime" with no resolved clock time */
+  /* Work out which band is "now" vs past vs future based on the current hour */
+  const nowHour = new Date().getHours();
+  let activeIndex = -1;
+  BANDS.forEach((band, i) => {
+    if (nowHour >= band.hours[0] && nowHour < band.hours[1]) activeIndex = i;
+  });
+
+  /* Anytime routines: timeOfDay = "anytime" with no resolved clock time.
+     These are always shown at full opacity — they're relevant any time. */
   const anytime = mine.filter((r) => {
     return (r.timeOfDay === "anytime" || !r.timeOfDay) && !resolveTime(r, shiftType);
   });
   if (anytime.length) {
-    html += `<div class="planner__band">
+    html += `<div class="planner__band" data-band="anytime">
       <div class="planner__band-label">Anytime</div>
       <div class="planner__flex-group">${anytime.map((r) => plannerCardHTML(db, r, dateKey)).join("")}</div>
       <button class="planner__add-btn link-btn" data-add-at-band="anytime">+ Add</button>
     </div>`;
   }
 
-  BANDS.forEach((band) => {
+  /* One global "next up" tracker — first undone item in the active band */
+  let nextUpFound = false;
+
+  BANDS.forEach((band, i) => {
+    const isActive = i === activeIndex;
+    const isPast   = activeIndex > -1 && i < activeIndex;
+
     /* Flexible routines: timeOfDay matches this band, no resolved time today */
     const flex = mine.filter((r) => {
       if (resolveTime(r, shiftType)) return false;
@@ -268,7 +284,16 @@ function renderKirstenPlanner(db) {
     }).sort((a, b) =>
       (resolveTime(a, shiftType) || "").localeCompare(resolveTime(b, shiftType) || ""));
 
-    html += `<div class="planner__band">`;
+    /* Helper: render a card, marking the first undone one in the active band */
+    const renderCard = (r, wrapFn) => {
+      const done = isDone(db, r.id, dateKey);
+      const nextUp = isActive && !done && !nextUpFound;
+      if (nextUp) nextUpFound = true;
+      return wrapFn(plannerCardHTML(db, r, dateKey, { nextUp }));
+    };
+
+    const bandClasses = ["planner__band", isActive ? "is-active" : "", isPast ? "is-past" : ""].filter(Boolean).join(" ");
+    html += `<div class="${bandClasses}" data-band="${band.addKey}">`;
     html += `<div class="planner__band-label">${band.label}</div>`;
 
     if (!flex.length && !timed.length) {
@@ -279,16 +304,16 @@ function renderKirstenPlanner(db) {
       if (flex.length) {
         html += `<div class="planner__flex-group">`;
         if (timed.length) html += `<div class="planner__flex-label">Flexible time</div>`;
-        flex.forEach((r) => { html += plannerCardHTML(db, r, dateKey); });
+        flex.forEach((r) => { html += renderCard(r, (c) => c); });
         html += `</div>`;
       }
       if (timed.length) {
         if (flex.length) html += `<div class="planner__flex-label">Scheduled</div>`;
         timed.forEach((r) => {
-          html += `<div class="planner__timed-row">
+          html += renderCard(r, (c) => `<div class="planner__timed-row">
             <div class="planner__time-pin">${formatTime12(resolveTime(r, shiftType))}</div>
-            <div class="planner__event">${plannerCardHTML(db, r, dateKey)}</div>
-          </div>`;
+            <div class="planner__event">${c}</div>
+          </div>`);
         });
       }
       html += `<button class="planner__add-btn link-btn" data-add-at-band="${band.addKey}">+ Add to ${band.label.toLowerCase()}</button>`;
