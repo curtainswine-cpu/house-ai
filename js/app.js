@@ -160,10 +160,11 @@ function closeModal() {
 }
 
 /* ---------- Add / edit routine ----------
-   Pass an existing routine to edit it; pass nothing to add a new one. */
-function openRoutineModal(existing, presetArea) {
+   existing = routine to edit; presetArea = "me"|"cleaning"|"household";
+   presetTimeOfDay = "morning"|"afternoon"|"evening"|"anytime" (for band + buttons) */
+function openRoutineModal(existing, presetArea, presetTimeOfDay) {
   const r = existing || {
-    timeOfDay: "morning", repeat: "daily", steps: [],
+    timeOfDay: presetTimeOfDay || "morning", repeat: "daily", steps: [], time: "",
     assignedTo: (presetArea && presetArea !== "me") ? "either" : DB.activePerson,
     area: presetArea || "me",
   };
@@ -201,6 +202,11 @@ function openRoutineModal(existing, presetArea) {
     <div class="field">
       <label>When in the day?</label>
       <div class="chip-row" id="rTime">${timeChips}</div>
+    </div>
+    <div class="field">
+      <label for="rSpecificTime">Specific time <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <input id="rSpecificTime" type="time" value="${escapeHTML(r.time || "")}" />
+      <small style="color:var(--muted)">Pin it to a clock time in your day plan — or leave blank to keep it flexible.</small>
     </div>
     <div class="field">
       <label>How often?</label>
@@ -254,6 +260,7 @@ function openRoutineModal(existing, presetArea) {
       repeatDay: repeat === "weekly" ? Number(document.getElementById("rDay").value) : undefined,
       anchorDate: repeat === "fortnightly" ? document.getElementById("rAnchor").value : undefined,
       steps,
+      time: document.getElementById("rSpecificTime").value || null,
     };
     if (isEdit) Object.assign(r, patch);
     else DB.routines.push(Object.assign({ id: uid() }, patch));
@@ -420,6 +427,10 @@ function wireEvents() {
       render();
       return;
     }
+
+    // Planner band "+" buttons — add a routine pre-set to that time of day
+    const addAtBand = e.target.closest("[data-add-at-band]");
+    if (addAtBand) { openRoutineModal(null, "me", addAtBand.dataset.addAtBand); return; }
 
     // Edit a routine (pencil on the Routines view)
     const edit = e.target.closest("[data-edit-routine]");

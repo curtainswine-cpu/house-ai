@@ -138,19 +138,136 @@ function deleteRoutine(db, id) {
   saveDB(db);
 }
 
-/* ---- More → "Your routines": personal ones only (chores live in Cleaning) ---- */
+/* ---- Manage → Routines: person-aware dispatch ---- */
 function renderRoutinesView(db) {
+  const h2 = document.querySelector("#view-manage .view__head h2");
+  if (h2) h2.textContent = db.activePerson === "kirsten" ? "Day plan" : "Routines";
+  if (db.activePerson === "kirsten") renderKirstenPlanner(db);
+  else renderJackFreeflow(db);
+}
+
+/* Format "14:30" → "2:30 pm" */
+function formatTime12(t) {
+  if (!t) return "";
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h < 12 ? "am" : "pm";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/* Compact card for the planner — check + title + steps toggle + edit */
+function plannerCardHTML(db, r, dateKey) {
+  const done = isDone(db, r.id, dateKey);
+  const hasSteps = r.steps && r.steps.length;
+  const open = _expandedRoutines.has(r.id);
+  const stepsBlock = hasSteps
+    ? `<button class="steps-toggle" data-steps-toggle="${r.id}">${
+        open ? "▾ hide steps" : `▸ ${r.steps.length} step${r.steps.length > 1 ? "s" : ""}`
+      }</button>${open ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : ""}`
+    : "";
+  return `
+    <article class="card routine routine--compact ${done ? "is-done" : ""}" data-routine="${r.id}">
+      <button class="check" data-toggle="${r.id}" aria-label="Mark done">✓</button>
+      <div class="card__main">
+        <div class="card__title">${escapeHTML(r.title)}</div>
+        ${stepsBlock ? `<div style="margin-top:4px">${stepsBlock}</div>` : ""}
+      </div>
+      <button class="icon-btn" data-edit-routine="${r.id}" aria-label="Edit">✎</button>
+    </article>`;
+}
+
+/* ---- Kirsten: day planner — morning / afternoon / evening ---- */
+function renderKirstenPlanner(db) {
+  const list = document.getElementById("routinesList");
+  if (!list) return;
+  const dateKey = todayKey();
+  const mine = db.routines.filter((r) => r.area === "me");
+
+  if (!mine.length) {
+    list.innerHTML = emptyState("📅", "Your day plan is empty", "Tap '+ Add something' in any section to build your daily schedule.");
+    return;
+  }
+
+  const BANDS = [
+    { key: "morning",   label: "Morning",   hours: [6,  12] },
+    { key: "afternoon", label: "Afternoon", hours: [12, 18] },
+    { key: "evening",   label: "Evening",   hours: [18, 24] },
+  ];
+
+  let html = "";
+
+  // Anytime routines — shown before the time bands
+  const anytime = mine.filter((r) => (r.timeOfDay === "anytime" || !r.timeOfDay) && !r.time);
+  if (anytime.length) {
+    html += `<div class="planner__band">
+      <div class="planner__band-label">Anytime</div>
+      <div class="planner__flex-group">${anytime.map((r) => plannerCardHTML(db, r, dateKey)).join("")}</div>
+      <button class="planner__add-btn link-btn" data-add-at-band="anytime">+ Add</button>
+    </div>`;
+  }
+
+  BANDS.forEach((band) => {
+    // Flexible routines (no clock time set) in this band
+    const flex = mine.filter((r) => r.timeOfDay === band.key && !r.time);
+    // Routines with a specific clock time that falls in this band's hours
+    const timed = mine.filter((r) => {
+      if (!r.time) return false;
+      const h = parseInt(r.time, 10);
+      return h >= band.hours[0] && h < band.hours[1];
+    }).sort((a, b) => a.time.localeCompare(b.time));
+
+    html += `<div class="planner__band">`;
+    html += `<div class="planner__band-label">${band.label}</div>`;
+
+    if (!flex.length && !timed.length) {
+      html += `<div class="planner__empty">Nothing planned
+        <button class="link-btn" data-add-at-band="${band.key}">+ Add something</button>
+      </div>`;
+    } else {
+      if (flex.length) {
+        html += `<div class="planner__flex-group">`;
+        if (timed.length) html += `<div class="planner__flex-label">Flexible time</div>`;
+        flex.forEach((r) => { html += plannerCardHTML(db, r, dateKey); });
+        html += `</div>`;
+      }
+      if (timed.length) {
+        if (flex.length) html += `<div class="planner__flex-label">Scheduled</div>`;
+        timed.forEach((r) => {
+          html += `<div class="planner__timed-row">
+            <div class="planner__time-pin">${formatTime12(r.time)}</div>
+            <div class="planner__event">${plannerCardHTML(db, r, dateKey)}</div>
+          </div>`;
+        });
+      }
+      html += `<button class="planner__add-btn link-btn" data-add-at-band="${band.key}">+ Add to ${band.label.toLowerCase()}</button>`;
+    }
+
+    html += `</div>`;
+  });
+
+  list.innerHTML = html;
+}
+
+/* ---- Jack: relaxed free-flow list — no clock times, no strict structure ---- */
+function renderJackFreeflow(db) {
   const list = document.getElementById("routinesList");
   if (!list) return;
   const mine = db.routines.filter((r) => r.area === "me");
   if (!mine.length) {
-    list.innerHTML = emptyState("🔁", "No personal routines", "Add things like meds, watch, teeth.");
+    list.innerHTML = emptyState("🔁", "No personal routines yet", "Add things you do regularly — mornings, evenings, whenever.");
     return;
   }
   const dateKey = todayKey();
-  list.innerHTML = mine
-    .map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true }))
-    .join("");
+  const groups = { morning: [], afternoon: [], evening: [], anytime: [] };
+  mine.forEach((r) => { (groups[r.timeOfDay || "anytime"] || groups.anytime).push(r); });
+  const order = [["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"],["anytime","Anytime"]];
+  let html = `<p class="planner__jack-note">Your routines, your way — no strict schedule.</p>`;
+  order.forEach(([key, label]) => {
+    if (!groups[key].length) return;
+    html += `<div class="time-group">${label}</div>`;
+    groups[key].forEach((r) => { html += routineCardHTML(db, r, dateKey, { compact: true, editable: true }); });
+  });
+  list.innerHTML = html;
 }
 
 /* Render a list of routines grouped by time of day into a container. */
