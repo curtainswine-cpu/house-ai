@@ -71,6 +71,7 @@ function renderHomeNav(db) {
     { view: "calendar", icon: "📅", label: "Calendar", sub: "everything ahead" },
     { view: "tasks", icon: "📋", label: TASKS_NAME, sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
     { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
+    { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
     { view: "health", icon: "💗", label: "Health", sub: "water · steps · gym" },
     { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
@@ -130,6 +131,7 @@ function render() {
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
   renderCleaning(DB);        // Cleaning
+  renderShopping(DB);        // Shopping (sticky notes)
   renderFood(DB);            // Food
   renderTodayHealth(DB);     // Health
   renderRoutinesView(DB);    // Manage → routines
@@ -371,6 +373,18 @@ function openStepsModal() {
   };
 }
 
+/* Add a shopping item from its note's input, keeping focus for rapid adding. */
+function addShopItemFromInput(listId) {
+  const input = document.getElementById("add-" + listId);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  addShopItem(DB, listId, text);
+  render();
+  const again = document.getElementById("add-" + listId);
+  if (again) again.focus();
+}
+
 /* Toggle a single pressed chip within a group. */
 function pressOne(groupId, btn) {
   document.getElementById(groupId).querySelectorAll(".chip,[aria-pressed]")
@@ -512,6 +526,23 @@ function wireEvents() {
     }
     const useOne = e.target.closest("[data-food-useone]");
     if (useOne) { useOneFood(DB, useOne.dataset.foodUseone); render(); return; }
+
+    // ---- Shopping (sticky-note lists) ----
+    if (e.target.closest("[data-new-list]")) { openNewListModal(); return; }
+    const editList = e.target.closest("[data-edit-list]");
+    if (editList) { openEditListModal(editList.dataset.editList); return; }
+    const toggleItem = e.target.closest("[data-toggle-item]");
+    if (toggleItem) {
+      const [lid, iid] = toggleItem.dataset.toggleItem.split("|");
+      toggleShopItem(DB, lid, iid); render(); return;
+    }
+    const delItem = e.target.closest("[data-del-item]");
+    if (delItem) {
+      const [lid, iid] = delItem.dataset.delItem.split("|");
+      deleteShopItem(DB, lid, iid); render(); return;
+    }
+    const addItem = e.target.closest("[data-additem]");
+    if (addItem) { addShopItemFromInput(addItem.dataset.additem); return; }
     const delFood = e.target.closest("[data-del-food]");
     if (delFood) { deleteFood(DB, delFood.dataset.delFood); render(); return; }
 
@@ -559,8 +590,14 @@ function wireEvents() {
   document.getElementById("suggestRoutinesBtn").onclick = openSuggestionsModal;
   document.getElementById("addCleaningBtn").onclick = () => openRoutineModal(null, "cleaning");
 
-  // Esc closes modal
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  // Esc closes modal; Enter in a shopping note's input adds the item
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeModal(); return; }
+    if (e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.additemInput) {
+      e.preventDefault();
+      addShopItemFromInput(e.target.dataset.additemInput);
+    }
+  });
 }
 
 /* ---------- Go! ---------- */

@@ -124,6 +124,16 @@ function defaultData() {
       owner: "",         // which person this calendar belongs to (whoever signed in)
     },
 
+    // Shopping — multiple sticky-note style lists.
+    shopping: {
+      lists: [
+        { id: uid(), title: "Bits for the house", colour: "y", items: [
+          { id: uid(), text: "Bin liners", done: false },
+          { id: uid(), text: "More baskets for the unit", done: false },
+        ] },
+      ],
+    },
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -176,6 +186,7 @@ function normalize(db) {
   if (!db.punjabi || !Array.isArray(db.punjabi.words)) db.punjabi = d.punjabi;
   if (!db.food || !Array.isArray(db.food.items)) db.food = d.food;
   if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
+  if (!db.shopping || !Array.isArray(db.shopping.lists)) db.shopping = d.shopping;
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
