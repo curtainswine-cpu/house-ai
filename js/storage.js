@@ -246,6 +246,20 @@ function applySeedAdditions(db) {
     a.routines.forEach((r) => db.routines.push(Object.assign({ id: uid() }, r)));
     db.appliedSeeds[a.key] = true;
   });
+
+  // One-time seed of Jack's upcoming gigs & events (added June 2026).
+  if (!db.appliedSeeds.jackEvents2026) {
+    const jackGigs = [
+      { title: "Dylan Gossett · Millennium Square, Leeds", date: "2026-06-30", time: "18:30", allDay: false },
+      { title: "The Wombats · The Piece Hall, Halifax", date: "2026-08-21", time: "18:00", allDay: false },
+      { title: "The Black Keys · Eventim Apollo, London", date: "2026-08-31", time: "19:00", allDay: false },
+      { title: "Benidorm 🌞 (back 14 Sep)", date: "2026-09-11", time: null, allDay: true },
+      { title: "Shinedown · AO Arena, Manchester", date: "2026-11-20", time: "18:00", allDay: false },
+      { title: "Nothing But Thieves · Co-op Live, Manchester", date: "2027-02-12", time: "19:00", allDay: false },
+    ];
+    jackGigs.forEach((e) => db.jackEvents.push(Object.assign({ id: uid() }, e)));
+    db.appliedSeeds.jackEvents2026 = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */
