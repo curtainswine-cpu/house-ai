@@ -260,6 +260,12 @@ function applySeedAdditions(db) {
     jackGigs.forEach((e) => db.jackEvents.push(Object.assign({ id: uid() }, e)));
     db.appliedSeeds.jackEvents2026 = true;
   }
+
+  // Bottomless brunch with Jack's school mates — TBC, not booked yet (added June 2026).
+  if (!db.appliedSeeds.jackEvents2026b) {
+    db.jackEvents.push({ id: uid(), title: "Bottomless brunch · Jack's school mates (TBC)", date: "2026-08-08", time: null, allDay: true });
+    db.appliedSeeds.jackEvents2026b = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */
