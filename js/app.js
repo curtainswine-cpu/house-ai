@@ -520,7 +520,9 @@ function wireEvents() {
     const sug = e.target.closest("[data-add-suggestion]");
     if (sug && !sug.disabled) {
       const s = SUGGESTED_ROUTINES[+sug.dataset.addSuggestion];
-      DB.routines.push(Object.assign({ id: uid() }, JSON.parse(JSON.stringify(s))));
+      const added = Object.assign({ id: uid() }, JSON.parse(JSON.stringify(s)));
+      if (!added.area) added.area = inferArea(added); // visible immediately, not just after reload
+      DB.routines.push(added);
       saveDB(DB);
       sug.textContent = "Added ✓"; sug.classList.add("btn--quiet"); sug.disabled = true;
       render();

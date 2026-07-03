@@ -258,7 +258,15 @@ function renderTodayCalendar(db) {
   // A work-pattern person (Jack) gets a calendar-type view built from their hours.
   const person = db.people.find((p) => p.id === db.activePerson);
   if (person && person.work) {
-    const { todayHTML, weekHTML } = scheduleHTML(generateWorkEvents(db, person, 7), "Not a work day today.");
+    const { todayHTML } = scheduleHTML(generateWorkEvents(db, person, 7), "Not a work day today.");
+    // The week view merges everything he'd want to see coming: his work
+    // hours, his own events (gigs etc.) and Kirsten's plans.
+    const weekMerged = [
+      ...generateWorkEvents(db, person, 7),
+      ...kirstenEventsForJack(db),
+      ...jackPersonalEventsAsCalendar(db),
+    ].sort((a, b) => (a.start > b.start ? 1 : -1));
+    const { weekHTML } = scheduleHTML(weekMerged, "");
     const tk = todayKey();
     const workToday = isWorkDayToday(person);
     const wfhToday = isWfh(db, person.id, tk);

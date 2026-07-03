@@ -46,6 +46,24 @@ function isDone(db, routineId, dateKey) {
   return !!db.completions[`${routineId}|${dateKey}`];
 }
 
+/* A one-off completed on an EARLIER day is finished — it shouldn't come back.
+   (It still shows, ticked, for the rest of the day it was done.) */
+function onceFinished(db, r, dateKey) {
+  if (r.repeat !== "once") return false;
+  return Object.keys(db.completions).some((k) => k.startsWith(r.id + "|") && k !== `${r.id}|${dateKey}`);
+}
+
+/* Due on this date AND not a finished one-off. */
+function isDueOn(db, r, date) {
+  return isRoutineDue(r, date) && !onceFinished(db, r, todayKey(date));
+}
+
+/* Is this personal-area task this person's? ("either"/"both" show for both) */
+function isPersonalFor(r, personId) {
+  return r.area === "me" &&
+    (r.assignedTo === personId || r.assignedTo === "either" || r.assignedTo === "both");
+}
+
 /* Toggle completion for a routine on a date. */
 function toggleDone(db, routineId, dateKey) {
   const key = `${routineId}|${dateKey}`;
@@ -59,17 +77,17 @@ function isSharedTask(r) { return r.area === "cleaning" || r.area === "household
 
 /* All due routines (used by the manage list). */
 function routinesForToday(db, date) {
-  return db.routines.filter((r) => isRoutineDue(r, date)).sort(byTime);
+  return db.routines.filter((r) => isDueOn(db, r, date)).sort(byTime);
 }
 /* MY personal tasks due today (Home screen) — yours + shown to you only. */
 function personalTasksToday(db, date) {
   return db.routines
-    .filter((r) => r.area === "me" && r.assignedTo === db.activePerson && isRoutineDue(r, date))
+    .filter((r) => isPersonalFor(r, db.activePerson) && isDueOn(db, r, date))
     .sort(byTime);
 }
 /* Shared household chores due today (cleaning + household), for both of you. */
 function sharedChoresToday(db, date) {
-  return db.routines.filter((r) => isSharedTask(r) && isRoutineDue(r, date)).sort(byTime);
+  return db.routines.filter((r) => isSharedTask(r) && isDueOn(db, r, date)).sort(byTime);
 }
 
 function personById(db, id) {
@@ -82,7 +100,7 @@ function whoTag(db, assignedTo) {
   if (assignedTo === "both")   return `<span class="tag">Both</span>`;
   const p = personById(db, assignedTo);
   if (!p) return "";
-  return `<span class="tag tag--person" style="--person-colour:${p.colour}">${p.name}</span>`;
+  return `<span class="tag tag--person" style="--person-colour:${p.colour}">${escapeHTML(p.name)}</span>`;
 }
 
 /* Which routine cards currently have their steps expanded (Today screen). */
@@ -199,7 +217,10 @@ function renderKirstenPlanner(db) {
   const list = document.getElementById("routinesList");
   if (!list) return;
   const dateKey = todayKey();
-  const mine = db.routines.filter((r) => r.area === "me");
+  // Only HER tasks, and only ones actually due today (weekly/fortnightly
+  // items appear on their day, finished one-offs stay gone).
+  const mine = db.routines.filter((r) =>
+    isPersonalFor(r, db.activePerson) && isDueOn(db, r, new Date()));
 
   if (!mine.length) {
     list.innerHTML = emptyState("📅", "Your day plan is empty", "Tap '+ Add something' in any section to build your daily schedule.");
@@ -220,7 +241,9 @@ function renderKirstenPlanner(db) {
     { keys: ["afternoon"], label: "Afternoon",      addKey: "afternoon", hours: [12, 18] },
     { keys: ["evening"],   label: "Evening",        addKey: "evening",   hours: [18, 24] },
   ] : [
-    { keys: ["morning"],   label: "Morning",   addKey: "morning",   hours: [6,  12] },
+    // Morning starts at midnight so very early times (e.g. 5:45 before an
+    // early shift) still land in a band instead of vanishing.
+    { keys: ["morning"],   label: "Morning",   addKey: "morning",   hours: [0,  12] },
     { keys: ["afternoon"], label: "Afternoon", addKey: "afternoon", hours: [12, 18] },
     { keys: ["evening"],   label: "Evening",   addKey: "evening",   hours: [18, 24] },
   ];
@@ -267,7 +290,10 @@ function renderKirstenPlanner(db) {
 
   BANDS.forEach((band, i) => {
     const isActive = i === activeIndex;
-    const isPast   = activeIndex > -1 && i < activeIndex;
+    // Past = listed before the active band AND its hours have actually gone by.
+    // (On nights the "Before work" band sits first but covers the evening — at
+    // 10am it's still ahead of you, so it must not be dimmed.)
+    const isPast   = activeIndex > -1 && i < activeIndex && nowHour >= band.hours[1];
 
     /* Flexible routines: timeOfDay matches this band, no resolved time today */
     const flex = mine.filter((r) => {
@@ -329,7 +355,9 @@ function renderKirstenPlanner(db) {
 function renderJackFreeflow(db) {
   const list = document.getElementById("routinesList");
   if (!list) return;
-  const mine = db.routines.filter((r) => r.area === "me");
+  // Only JACK's tasks — Kirsten's personal routines stay hers.
+  const mine = db.routines.filter((r) =>
+    isPersonalFor(r, db.activePerson) && isDueOn(db, r, new Date()));
   if (!mine.length) {
     list.innerHTML = emptyState("🔁", "No personal routines yet", "Add things you do regularly — mornings, evenings, whenever.");
     return;
