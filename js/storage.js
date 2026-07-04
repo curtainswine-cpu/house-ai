@@ -266,6 +266,14 @@ function applySeedAdditions(db) {
     db.jackEvents.push({ id: uid(), title: "Bottomless brunch · Jack's school mates (TBC)", date: "2026-08-08", time: null, allDay: true });
     db.appliedSeeds.jackEvents2026b = true;
   }
+
+  // Benidorm is 11–14 Sep — give the already-seeded event its full range
+  // now that multi-day events are supported (July 2026).
+  if (!db.appliedSeeds.benidormRange) {
+    const b = db.jackEvents.find((e) => (e.title || "").startsWith("Benidorm"));
+    if (b) { b.endDate = "2026-09-14"; b.title = "Benidorm 🌞"; }
+    db.appliedSeeds.benidormRange = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

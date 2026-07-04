@@ -436,6 +436,10 @@ function openJackEventModal(existing) {
       <input id="jevDate" type="date" value="${escapeHTML(ev.date || todayKey())}" />
     </div>
     <div class="field">
+      <label for="jevEnd">Until <span style="font-weight:400;color:var(--muted)">(optional — for trips spanning days)</span></label>
+      <input id="jevEnd" type="date" value="${escapeHTML(ev.endDate || "")}" />
+    </div>
+    <div class="field">
       <label for="jevTime">Time <span style="font-weight:400;color:var(--muted)">(optional — leave blank for all day)</span></label>
       <input id="jevTime" type="time" value="${escapeHTML(ev.time || "")}" />
     </div>
@@ -446,7 +450,10 @@ function openJackEventModal(existing) {
     const title = document.getElementById("jevTitle").value.trim();
     if (!title) { document.getElementById("jevTitle").focus(); return; }
     const time = document.getElementById("jevTime").value || null;
-    const entry = { id: existing ? existing.id : uid(), title, date: document.getElementById("jevDate").value, time, allDay: !time };
+    const date = document.getElementById("jevDate").value;
+    const endRaw = document.getElementById("jevEnd").value;
+    const endDate = (endRaw && endRaw > date) ? endRaw : null; // must be after the start day
+    const entry = { id: existing ? existing.id : uid(), title, date, endDate, time, allDay: !time };
     if (existing) {
       const idx = DB.jackEvents.findIndex((e) => e.id === existing.id);
       if (idx > -1) DB.jackEvents[idx] = entry; else DB.jackEvents.push(entry);

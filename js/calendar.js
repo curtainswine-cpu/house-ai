@@ -159,16 +159,28 @@ function kirstenEventsForJack(db) {
   }));
 }
 
-/* Build Jack-specific events (added by Kirsten) as calendar items. */
+/* Build Jack-specific events (added by Kirsten) as calendar items.
+   An event with an endDate (e.g. a holiday) appears on EVERY day of its
+   range, so he never looks free while he's away. */
 function jackPersonalEventsAsCalendar(db) {
-  return (db.jackEvents || []).map((e) => ({
-    summary: e.title,
-    start: e.allDay || !e.time ? e.date : e.date + "T" + e.time + ":00",
-    allDay: e.allDay || !e.time,
-    cal: "For Jack",
-    srcType: "jack",
-    jackEventId: e.id,
-  }));
+  const out = [];
+  (db.jackEvents || []).forEach((e) => {
+    const endKey = (e.endDate && e.endDate > e.date) ? e.endDate : e.date;
+    const d = new Date(e.date + "T00:00:00");
+    for (let i = 0; i < 62 && todayKey(d) <= endKey; i++, d.setDate(d.getDate() + 1)) {
+      const dk = todayKey(d);
+      const timed = dk === e.date && e.time && !e.allDay; // only the first day carries the clock time
+      out.push({
+        summary: e.title,
+        start: timed ? dk + "T" + e.time + ":00" : dk,
+        allDay: !timed,
+        cal: "Jack",
+        srcType: "jack",
+        jackEventId: e.id,
+      });
+    }
+  });
+  return out;
 }
 function calDayLabel(d) {
   const dk = todayKey(d);
@@ -198,7 +210,9 @@ function renderFullCalendar(db) {
         <div class="goal__actions"><button class="btn btn--mini" data-cal-refresh>Connect Google</button></div></div>`;
       return;
     }
-    events = db.calendar.lastEvents || [];
+    // Kirsten's view merges Jack's events (gigs, trips) so she can see
+    // what he's got on without switching to his side.
+    events = [...(db.calendar.lastEvents || []), ...jackPersonalEventsAsCalendar(db)];
   }
 
   let body = "";
