@@ -1,6 +1,6 @@
 /* JARVIS service worker — makes the app open instantly and work offline.
    Bump CACHE whenever the app files change so phones pick up the update. */
-const CACHE = "jarvis-v39";
+const CACHE = "jarvis-v40";
 const ASSETS = [
   "./", "./index.html", "./styles.css", "./manifest.webmanifest",
   "./js/storage.js", "./js/routines.js", "./js/projects.js",

@@ -7,7 +7,7 @@
 const TIME_ORDER = { morning: 0, afternoon: 1, evening: 2, anytime: 3 };
 const TIME_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", anytime: "Anytime" };
 
-const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off", periodic: "Every few weeks" };
+const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", monthly: "Monthly", once: "One-off", periodic: "Every few weeks" };
 
 /* Ready-made routines Kirsten can add with one tap (fills gaps the live
    app may be missing). Shown in the "Suggestions" picker. */
@@ -45,6 +45,16 @@ function isRoutineDue(routine, date) {
     const diff = daysBetween(anchor, date);
     const interval = routine.intervalDays || 21;
     return diff >= 0 && diff % interval === 0;
+  }
+  if (routine.repeat === "monthly") {
+    // Same day-of-month as the anchor, every month from then on. Clamped
+    // for short months (e.g. anchor day 31 becomes the last day of Feb).
+    if (!routine.anchorDate) return false;
+    const anchor = new Date(routine.anchorDate + "T00:00:00");
+    if (daysBetween(anchor, date) < 0) return false;
+    const lastDayThisMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    const targetDay = Math.min(anchor.getDate(), lastDayThisMonth);
+    return date.getDate() === targetDay;
   }
   if (routine.repeat === "once") return true; // shows until completed
   return true;

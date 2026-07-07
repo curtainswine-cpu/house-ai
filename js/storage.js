@@ -391,6 +391,22 @@ function applySeedAdditions(db) {
     });
     db.appliedSeeds.potRefillRoutine = true;
   }
+
+  // Photograph one cookbook a month, starting August — source material for
+  // the meal planner app she's building (added July 2026).
+  if (!db.appliedSeeds.cookbookMonthly) {
+    db.routines.push({
+      id: uid(),
+      title: "Photograph a cookbook",
+      area: "me",
+      assignedTo: "kirsten",
+      timeOfDay: "anytime",
+      repeat: "monthly",
+      anchorDate: "2026-08-01",
+      steps: ["For the meal planner app — cover + all the recipe pages"],
+    });
+    db.appliedSeeds.cookbookMonthly = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */
