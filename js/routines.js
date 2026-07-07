@@ -53,12 +53,14 @@ function isRoutineDue(routine, date) {
 /* For a "periodic" routine with nearestDayOff, work out which day off falls
    closest to this cycle's target date (e.g. ~3 weeks after the anchor).
    Falls back to the plain target date if no day-off data is available yet
-   (calendar not connected, or nothing known within the search window). */
-function resolvePeriodicDayOff(db, r, refDate) {
+   (calendar not connected, or nothing known within the search window).
+   cycleOffset lets a caller look ahead to a future cycle (e.g. 1 = "the one
+   after this one") without touching the routine's own due-date logic. */
+function resolvePeriodicDayOff(db, r, refDate, cycleOffset) {
   const interval = r.intervalDays || 21;
   const anchor = new Date((r.anchorDate || todayKey()) + "T00:00:00");
   const diff = Math.max(0, daysBetween(anchor, refDate));
-  const cycleIndex = Math.floor(diff / interval);
+  const cycleIndex = Math.floor(diff / interval) + (cycleOffset || 0);
   const target = new Date(anchor);
   target.setDate(target.getDate() + cycleIndex * interval);
 
@@ -226,8 +228,19 @@ function currentShiftType(db) {
   return s ? s.type : null;
 }
 
+/* For a "periodic" nearestDayOff routine, a heads-up about when to book the
+   NEXT occurrence — shown alongside today's card so she can book ahead
+   instead of waiting to be reminded again in 3 weeks. */
+function periodicSuggestOpts(db, r) {
+  if (r.repeat !== "periodic" || !r.nearestDayOff) return {};
+  const nextDate = resolvePeriodicDayOff(db, r, new Date(), 1);
+  const label = typeof formatNiceDate === "function" ? formatNiceDate(nextDate) : nextDate;
+  return { suggestedDate: label };
+}
+
 /* Compact card for the planner — check + title + steps toggle + edit.
-   opts.nextUp = true marks it as the first undone item in the active band. */
+   opts.nextUp = true marks it as the first undone item in the active band.
+   opts.suggestedDate, if set, shows a booking-ahead hint under the title. */
 function plannerCardHTML(db, r, dateKey, opts = {}) {
   const done = isDone(db, r.id, dateKey);
   const isNextUp = !done && !!opts.nextUp;
@@ -238,12 +251,16 @@ function plannerCardHTML(db, r, dateKey, opts = {}) {
         open ? "▾ hide steps" : `▸ ${r.steps.length} step${r.steps.length > 1 ? "s" : ""}`
       }</button>${open ? `<ul class="steps">${r.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : ""}`
     : "";
+  const suggestBlock = opts.suggestedDate
+    ? `<div class="planner__suggest-date">📅 Suggested next booking: ${escapeHTML(opts.suggestedDate)}</div>`
+    : "";
   return `
     <article class="card routine routine--compact planner__card ${done ? "is-done" : ""} ${isNextUp ? "is-next-up" : ""}" data-routine="${r.id}">
       <button class="check" data-toggle="${r.id}" aria-label="Mark done">✓</button>
       <div class="card__main">
         <div class="card__title">${escapeHTML(r.title)}</div>
         ${stepsBlock ? `<div style="margin-top:4px">${stepsBlock}</div>` : ""}
+        ${suggestBlock}
       </div>
       <button class="icon-btn" data-edit-routine="${r.id}" aria-label="Edit">✎</button>
     </article>`;
@@ -317,7 +334,7 @@ function renderKirstenPlanner(db) {
   if (anytime.length) {
     html += `<div class="planner__band" data-band="anytime">
       <div class="planner__band-label">Anytime</div>
-      <div class="planner__flex-group">${anytime.map((r) => plannerCardHTML(db, r, dateKey)).join("")}</div>
+      <div class="planner__flex-group">${anytime.map((r) => plannerCardHTML(db, r, dateKey, periodicSuggestOpts(db, r))).join("")}</div>
       <button class="planner__add-btn link-btn" data-add-at-band="anytime">+ Add</button>
     </div>`;
   }
@@ -352,7 +369,7 @@ function renderKirstenPlanner(db) {
       const done = isDone(db, r.id, dateKey);
       const nextUp = isActive && !done && !nextUpFound;
       if (nextUp) nextUpFound = true;
-      return wrapFn(plannerCardHTML(db, r, dateKey, { nextUp }));
+      return wrapFn(plannerCardHTML(db, r, dateKey, Object.assign({ nextUp }, periodicSuggestOpts(db, r))));
     };
 
     const bandClasses = ["planner__band", isActive ? "is-active" : "", isPast ? "is-past" : ""].filter(Boolean).join(" ");

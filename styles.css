@@ -458,6 +458,9 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 14px; margin-bottom: 16px; line-height: 1.4;
 }
+.planner__suggest-date {
+  font-size: .78rem; color: var(--accent); margin-top: 4px; opacity: .85;
+}
 
 /* Three-slot time pickers in the routine modal (work / day off / night) */
 .tvar-rows { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
