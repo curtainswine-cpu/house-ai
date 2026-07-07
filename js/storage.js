@@ -292,6 +292,25 @@ function applySeedAdditions(db) {
     });
     db.appliedSeeds.lashBrowRoutine = true;
   }
+
+  // Order anxiety meds — her 3-week pill pot started Sun 5 Jul 2026, so it
+  // runs dry ~26 Jul. Reminder fires a week ahead (19 Jul) to leave time for
+  // the repeat prescription to arrive, then repeats every 3 weeks from
+  // whichever date she actually orders on (added July 2026).
+  if (!db.appliedSeeds.anxietyMedsRoutine) {
+    db.routines.push({
+      id: uid(),
+      title: "Order anxiety medication (repeat prescription)",
+      area: "me",
+      assignedTo: "kirsten",
+      timeOfDay: "anytime",
+      repeat: "periodic",
+      intervalDays: 21,
+      anchorDate: "2026-07-19",
+      steps: ["Only 2 left as a buffer — order before the pill pot runs out"],
+    });
+    db.appliedSeeds.anxietyMedsRoutine = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

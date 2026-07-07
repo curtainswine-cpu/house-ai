@@ -240,10 +240,10 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
       <select id="rDay">${WEEKDAYS.map((d,i)=>`<option value="${i}"${r.repeatDay === i ? " selected" : ""}>${d}</option>`).join("")}</select>
     </div>
     <div class="field" id="rAnchorWrap" ${(r.repeat === "fortnightly" || r.repeat === "periodic") ? "" : "hidden"}>
-      <label for="rAnchor">${r.repeat === "periodic" ? "Last one was on" : "The next one falls on"}</label>
+      <label for="rAnchor">${r.repeat === "periodic" ? "Counts from" : "The next one falls on"}</label>
       <input id="rAnchor" type="date" value="${escapeAttr(r.anchorDate || todayKey())}" />
       <small style="color:var(--muted)">${r.repeat === "periodic"
-        ? `Repeats every ${Math.round((r.intervalDays || 21) / 7)} weeks from here, landing on your nearest day off.`
+        ? `Repeats every ${Math.round((r.intervalDays || 21) / 7)} weeks from here${r.nearestDayOff ? ", landing on your nearest day off" : ""}. Rolls forward to whichever date you actually tick it on.`
         : "e.g. your next bin day — then it repeats every 2 weeks."}</small>
     </div>
     <div class="field">

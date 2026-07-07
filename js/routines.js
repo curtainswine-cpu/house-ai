@@ -7,7 +7,7 @@
 const TIME_ORDER = { morning: 0, afternoon: 1, evening: 2, anytime: 3 };
 const TIME_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", anytime: "Anytime" };
 
-const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off", periodic: "Every few weeks (nearest day off)" };
+const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off", periodic: "Every few weeks" };
 
 /* Ready-made routines Kirsten can add with one tap (fills gaps the live
    app may be missing). Shown in the "Suggestions" picker. */
@@ -110,12 +110,12 @@ function toggleDone(db, routineId, dateKey) {
   if (db.completions[key]) delete db.completions[key];
   else db.completions[key] = true;
 
-  // A "periodic, nearest day off" routine (e.g. lash infill) rolls its cycle
-  // forward from whenever it's actually ticked — so the next suggested
-  // booking counts from the real appointment date, not a fixed schedule.
+  // Any "periodic" routine (lash infill, repeat prescriptions...) rolls its
+  // cycle forward from whenever it's actually ticked — so the next occurrence
+  // counts from the real date it was done, not a fixed schedule from day one.
   if (marking) {
     const r = db.routines.find((x) => x.id === routineId);
-    if (r && r.repeat === "periodic" && r.nearestDayOff) r.anchorDate = dateKey;
+    if (r && r.repeat === "periodic") r.anchorDate = dateKey;
   }
   saveDB(db);
 }
