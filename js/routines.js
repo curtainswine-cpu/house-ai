@@ -106,8 +106,17 @@ function isPersonalFor(r, personId) {
 /* Toggle completion for a routine on a date. */
 function toggleDone(db, routineId, dateKey) {
   const key = `${routineId}|${dateKey}`;
+  const marking = !db.completions[key]; // ticking on, not undoing
   if (db.completions[key]) delete db.completions[key];
   else db.completions[key] = true;
+
+  // A "periodic, nearest day off" routine (e.g. lash infill) rolls its cycle
+  // forward from whenever it's actually ticked — so the next suggested
+  // booking counts from the real appointment date, not a fixed schedule.
+  if (marking) {
+    const r = db.routines.find((x) => x.id === routineId);
+    if (r && r.repeat === "periodic" && r.nearestDayOff) r.anchorDate = dateKey;
+  }
   saveDB(db);
 }
 
