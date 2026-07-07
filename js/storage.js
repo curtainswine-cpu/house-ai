@@ -274,6 +274,24 @@ function applySeedAdditions(db) {
     if (b) { b.endDate = "2026-09-14"; b.title = "Benidorm 🌞"; }
     db.appliedSeeds.benidormRange = true;
   }
+
+  // Lash infill + brow wax/tint — every 3 weeks, landing on her nearest day
+  // off rather than a fixed date (added July 2026, last done 7 Jul 2026).
+  if (!db.appliedSeeds.lashBrowRoutine) {
+    db.routines.push({
+      id: uid(),
+      title: "Lash infill + brow wax/tint",
+      area: "me",
+      assignedTo: "kirsten",
+      timeOfDay: "anytime",
+      repeat: "periodic",
+      intervalDays: 21,
+      nearestDayOff: true,
+      anchorDate: "2026-07-07",
+      steps: [],
+    });
+    db.appliedSeeds.lashBrowRoutine = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

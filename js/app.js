@@ -188,7 +188,11 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
   const timeChips = ["morning","afternoon","evening","anytime"].map((t) =>
     `<button class="chip" data-time="${t}" aria-pressed="${r.timeOfDay === t}">${TIME_LABEL[t]}</button>`).join("");
 
-  const repeatChips = [["daily","Every day"],["weekly","Weekly"],["fortnightly","Fortnightly"],["once","One-off"]]
+  // "periodic" (e.g. lash infill) isn't creatable from this picker — it's only
+  // shown here so an existing one displays correctly and can be switched away from.
+  const repeatOptions = [["daily","Every day"],["weekly","Weekly"],["fortnightly","Fortnightly"],["once","One-off"]];
+  if (r.repeat === "periodic") repeatOptions.push(["periodic", REPEAT_LABEL.periodic]);
+  const repeatChips = repeatOptions
     .map(([val,label]) => `<button class="chip" data-repeat="${val}" aria-pressed="${r.repeat === val}">${label}</button>`).join("");
 
   openModal(isEdit ? "Edit routine" : "New routine", `
@@ -235,10 +239,12 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
       <label for="rDay">Which day?</label>
       <select id="rDay">${WEEKDAYS.map((d,i)=>`<option value="${i}"${r.repeatDay === i ? " selected" : ""}>${d}</option>`).join("")}</select>
     </div>
-    <div class="field" id="rAnchorWrap" ${r.repeat === "fortnightly" ? "" : "hidden"}>
-      <label for="rAnchor">The next one falls on</label>
+    <div class="field" id="rAnchorWrap" ${(r.repeat === "fortnightly" || r.repeat === "periodic") ? "" : "hidden"}>
+      <label for="rAnchor">${r.repeat === "periodic" ? "Last one was on" : "The next one falls on"}</label>
       <input id="rAnchor" type="date" value="${escapeAttr(r.anchorDate || todayKey())}" />
-      <small style="color:var(--muted)">e.g. your next bin day — then it repeats every 2 weeks.</small>
+      <small style="color:var(--muted)">${r.repeat === "periodic"
+        ? `Repeats every ${Math.round((r.intervalDays || 21) / 7)} weeks from here, landing on your nearest day off.`
+        : "e.g. your next bin day — then it repeats every 2 weeks."}</small>
     </div>
     <div class="field">
       <label for="rSteps">Steps (optional, one per line — helps break it down)</label>
@@ -262,7 +268,7 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
     const b = e.target.closest("[data-repeat]"); if (!b) return;
     repeat = b.dataset.repeat; pressOne("rRepeat", b);
     document.getElementById("rDayWrap").hidden = repeat !== "weekly";
-    document.getElementById("rAnchorWrap").hidden = repeat !== "fortnightly";
+    document.getElementById("rAnchorWrap").hidden = !(repeat === "fortnightly" || repeat === "periodic");
   };
 
   document.getElementById("rSave").onclick = () => {
@@ -277,7 +283,7 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
       timeOfDay: time,
       repeat,
       repeatDay: repeat === "weekly" ? Number(document.getElementById("rDay").value) : undefined,
-      anchorDate: repeat === "fortnightly" ? document.getElementById("rAnchor").value : undefined,
+      anchorDate: (repeat === "fortnightly" || repeat === "periodic") ? document.getElementById("rAnchor").value : undefined,
       steps,
       timeVariants: {
         work:  document.getElementById("rTimeWork").value  || null,

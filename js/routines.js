@@ -7,7 +7,7 @@
 const TIME_ORDER = { morning: 0, afternoon: 1, evening: 2, anytime: 3 };
 const TIME_LABEL = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", anytime: "Anytime" };
 
-const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off" };
+const REPEAT_LABEL = { daily: "Daily", weekly: "Weekly", fortnightly: "Fortnightly", once: "One-off", periodic: "Every few weeks (nearest day off)" };
 
 /* Ready-made routines Kirsten can add with one tap (fills gaps the live
    app may be missing). Shown in the "Suggestions" picker. */
@@ -37,8 +37,42 @@ function isRoutineDue(routine, date) {
     const diff = daysBetween(anchor, date);
     return diff >= 0 && diff % 14 === 0; // every 2 weeks from the anchor bin day
   }
+  if (routine.repeat === "periodic") {
+    // Plain fixed-interval fallback — used when nearestDayOff can't be
+    // resolved (see resolvePeriodicDayOff, which normally takes over instead).
+    if (!routine.anchorDate) return false;
+    const anchor = new Date(routine.anchorDate + "T00:00:00");
+    const diff = daysBetween(anchor, date);
+    const interval = routine.intervalDays || 21;
+    return diff >= 0 && diff % interval === 0;
+  }
   if (routine.repeat === "once") return true; // shows until completed
   return true;
+}
+
+/* For a "periodic" routine with nearestDayOff, work out which day off falls
+   closest to this cycle's target date (e.g. ~3 weeks after the anchor).
+   Falls back to the plain target date if no day-off data is available yet
+   (calendar not connected, or nothing known within the search window). */
+function resolvePeriodicDayOff(db, r, refDate) {
+  const interval = r.intervalDays || 21;
+  const anchor = new Date((r.anchorDate || todayKey()) + "T00:00:00");
+  const diff = Math.max(0, daysBetween(anchor, refDate));
+  const cycleIndex = Math.floor(diff / interval);
+  const target = new Date(anchor);
+  target.setDate(target.getDate() + cycleIndex * interval);
+
+  let best = null, bestDist = Infinity;
+  for (let o = -3; o <= 4; o++) {
+    const d = new Date(target);
+    d.setDate(d.getDate() + o);
+    const dk = todayKey(d);
+    if (typeof ownerOffOnDate === "function" && ownerOffOnDate(db, dk) && Math.abs(o) < bestDist) {
+      bestDist = Math.abs(o);
+      best = dk;
+    }
+  }
+  return best || todayKey(target);
 }
 
 /* Has this routine been completed today? */
@@ -55,6 +89,9 @@ function onceFinished(db, r, dateKey) {
 
 /* Due on this date AND not a finished one-off. */
 function isDueOn(db, r, date) {
+  if (r.repeat === "periodic" && r.nearestDayOff) {
+    return todayKey(date) === resolvePeriodicDayOff(db, r, date);
+  }
   return isRoutineDue(r, date) && !onceFinished(db, r, todayKey(date));
 }
 
