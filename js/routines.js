@@ -110,12 +110,15 @@ function toggleDone(db, routineId, dateKey) {
   if (db.completions[key]) delete db.completions[key];
   else db.completions[key] = true;
 
-  // Any "periodic" routine (lash infill, repeat prescriptions...) rolls its
-  // cycle forward from whenever it's actually ticked — so the next occurrence
-  // counts from the real date it was done, not a fixed schedule from day one.
+  // A "periodic" routine flagged rollOnTick (bookings, repeat orders — things
+  // where WHEN you actually did it matters) rolls its cycle forward from
+  // whenever it's ticked, so the next occurrence counts from the real date.
+  // Fixed-cadence ones (e.g. an every-other-day supplement) are NOT flagged —
+  // missing a dose shouldn't shift the whole schedule, it should just stay on
+  // its calendar rhythm and catch up next scheduled day.
   if (marking) {
     const r = db.routines.find((x) => x.id === routineId);
-    if (r && r.repeat === "periodic") r.anchorDate = dateKey;
+    if (r && r.repeat === "periodic" && r.rollOnTick) r.anchorDate = dateKey;
   }
   saveDB(db);
 }

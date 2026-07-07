@@ -277,6 +277,8 @@ function applySeedAdditions(db) {
 
   // Lash infill + brow wax/tint — every 3 weeks, landing on her nearest day
   // off rather than a fixed date (added July 2026, last done 7 Jul 2026).
+  // rollOnTick: it's a booking, so the cycle should count from whenever she
+  // actually goes, not a rigid schedule.
   if (!db.appliedSeeds.lashBrowRoutine) {
     db.routines.push({
       id: uid(),
@@ -287,16 +289,18 @@ function applySeedAdditions(db) {
       repeat: "periodic",
       intervalDays: 21,
       nearestDayOff: true,
+      rollOnTick: true,
       anchorDate: "2026-07-07",
       steps: [],
     });
     db.appliedSeeds.lashBrowRoutine = true;
   }
 
-  // Order anxiety meds — her 3-week pill pot started Sun 5 Jul 2026, so it
-  // runs dry ~26 Jul. Reminder fires a week ahead (19 Jul) to leave time for
-  // the repeat prescription to arrive, then repeats every 3 weeks from
-  // whichever date she actually orders on (added July 2026).
+  // Order anxiety meds — her 3-week pill pot started Sun 5 Jul 2026 and the
+  // meds run out exactly when the pot does, ~26 Jul. Reminder fires a week
+  // ahead (19 Jul) to leave time for the repeat prescription to arrive, then
+  // rolls forward 3 weeks from whichever date she actually orders on
+  // (added July 2026).
   if (!db.appliedSeeds.anxietyMedsRoutine) {
     db.routines.push({
       id: uid(),
@@ -306,10 +310,56 @@ function applySeedAdditions(db) {
       timeOfDay: "anytime",
       repeat: "periodic",
       intervalDays: 21,
+      rollOnTick: true,
       anchorDate: "2026-07-19",
-      steps: ["Only 2 left as a buffer — order before the pill pot runs out"],
+      steps: ["Pill pot runs out 26 Jul — order in good time for the prescription to arrive"],
     });
     db.appliedSeeds.anxietyMedsRoutine = true;
+  }
+
+  // Retrofit rollOnTick + the clarified meds note onto her ALREADY-created
+  // routines from the two seeds above (their creation blocks only run once,
+  // so editing those object literals doesn't reach her live device).
+  if (!db.appliedSeeds.periodicRollFlag) {
+    db.routines.forEach((r) => {
+      if (r.repeat !== "periodic") return;
+      if (r.title.startsWith("Lash infill")) r.rollOnTick = true;
+      if (r.title.startsWith("Order anxiety")) {
+        r.rollOnTick = true;
+        r.steps = ["Pill pot runs out 26 Jul — order in good time for the prescription to arrive"];
+      }
+    });
+    db.appliedSeeds.periodicRollFlag = true;
+  }
+
+  // Biotin + magnesium, alternating every other day (one or the other, every
+  // single day) — biotin's next dose is tomorrow, magnesium fills the day in
+  // between. Fixed calendar cadence, NOT rollOnTick: missing a dose shouldn't
+  // shift the whole rhythm, it should just resume on the next scheduled day
+  // (added July 2026).
+  if (!db.appliedSeeds.biotinMagnesium) {
+    db.routines.push(
+      {
+        id: uid(), title: "Biotin supplement (every other day)", area: "me",
+        assignedTo: "kirsten", timeOfDay: "morning", repeat: "periodic",
+        intervalDays: 2, anchorDate: "2026-07-08", steps: [],
+      },
+      {
+        id: uid(), title: "Magnesium supplement (every other day)", area: "me",
+        assignedTo: "kirsten", timeOfDay: "morning", repeat: "periodic",
+        intervalDays: 2, anchorDate: "2026-07-09", steps: [],
+      },
+    );
+    db.appliedSeeds.biotinMagnesium = true;
+  }
+
+  // Iron supplement, weekly on Saturdays (added July 2026).
+  if (!db.appliedSeeds.ironWeekly) {
+    db.routines.push({
+      id: uid(), title: "Iron supplement", area: "me", assignedTo: "kirsten",
+      timeOfDay: "morning", repeat: "weekly", repeatDay: 6, steps: [],
+    });
+    db.appliedSeeds.ironWeekly = true;
   }
 }
 
