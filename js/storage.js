@@ -361,6 +361,36 @@ function applySeedAdditions(db) {
     });
     db.appliedSeeds.ironWeekly = true;
   }
+
+  // Refill the meds pot every 3 weeks on the Saturday — or the day before
+  // (Friday, then Thursday, Wednesday) if that's a day off instead, since
+  // it's more convenient to sit down and load it up on a day off. Fixed
+  // cadence, NOT rollOnTick — the pot's 3-week rhythm doesn't shift just
+  // because refilling happened a bit early or late. Lists each individual
+  // medication that goes in as a checklist below the reminder (added July
+  // 2026; first refill Sat 25 Jul, the Saturday before the current pot
+  // runs out).
+  if (!db.appliedSeeds.potRefillRoutine) {
+    db.routines.push({
+      id: uid(),
+      title: "Refill meds pot (3 weeks)",
+      area: "me",
+      assignedTo: "kirsten",
+      timeOfDay: "anytime",
+      repeat: "periodic",
+      intervalDays: 21,
+      nearestDayOff: true,
+      dayOffSearch: "before",
+      anchorDate: "2026-07-25",
+      steps: [
+        "Anxiety medication — daily",
+        "Biotin — every other day",
+        "Magnesium — every other day",
+        "Iron — Saturdays only",
+      ],
+    });
+    db.appliedSeeds.potRefillRoutine = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

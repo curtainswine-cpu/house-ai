@@ -50,13 +50,28 @@ function isRoutineDue(routine, date) {
   return true;
 }
 
+/* Default search window for "nearest day off": the target date itself
+   first, then a few days either side, closest first (ties favour the
+   earlier day — better to do something a bit early than let it run out). */
+const DAYOFF_SEARCH_AROUND = [0, -1, 1, -2, 2, -3, 3, 4];
+/* Backward-only: prefer the target day itself; only step earlier (never
+   later) if it isn't free. Used for things anchored to a fixed day (e.g.
+   "refill the pot on Saturday, or Friday if that's a day off instead"). */
+const DAYOFF_SEARCH_BEFORE = [0, -1, -2, -3];
+
+/* Which search window a routine wants — set on the routine itself so each
+   one can look around its target date or only earlier, never later. */
+function periodicSearchOffsets(r) {
+  return r.dayOffSearch === "before" ? DAYOFF_SEARCH_BEFORE : DAYOFF_SEARCH_AROUND;
+}
+
 /* For a "periodic" routine with nearestDayOff, work out which day off falls
    closest to this cycle's target date (e.g. ~3 weeks after the anchor).
    Falls back to the plain target date if no day-off data is available yet
    (calendar not connected, or nothing known within the search window).
    cycleOffset lets a caller look ahead to a future cycle (e.g. 1 = "the one
    after this one") without touching the routine's own due-date logic. */
-function resolvePeriodicDayOff(db, r, refDate, cycleOffset) {
+function resolvePeriodicDayOff(db, r, refDate, cycleOffset, offsets) {
   const interval = r.intervalDays || 21;
   const anchor = new Date((r.anchorDate || todayKey()) + "T00:00:00");
   const diff = Math.max(0, daysBetween(anchor, refDate));
@@ -64,17 +79,13 @@ function resolvePeriodicDayOff(db, r, refDate, cycleOffset) {
   const target = new Date(anchor);
   target.setDate(target.getDate() + cycleIndex * interval);
 
-  let best = null, bestDist = Infinity;
-  for (let o = -3; o <= 4; o++) {
+  for (const o of (offsets || periodicSearchOffsets(r))) {
     const d = new Date(target);
     d.setDate(d.getDate() + o);
     const dk = todayKey(d);
-    if (typeof ownerOffOnDate === "function" && ownerOffOnDate(db, dk) && Math.abs(o) < bestDist) {
-      bestDist = Math.abs(o);
-      best = dk;
-    }
+    if (typeof ownerOffOnDate === "function" && ownerOffOnDate(db, dk)) return dk;
   }
-  return best || todayKey(target);
+  return todayKey(target);
 }
 
 /* Has this routine been completed today? */
