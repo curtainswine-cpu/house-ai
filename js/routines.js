@@ -1002,11 +1002,35 @@ function companionshipPct(db, personId, petId) {
   return Math.min(100, Math.round((xp / PET_COMPANIONSHIP_CAP) * 100));
 }
 
+/* Computed live from a stored birthdate rather than a static number, so
+   it doesn't quietly go stale a year from now. Used for both the humans
+   and the dogs. */
+function ageFromBirthdate(birthdate) {
+  if (!birthdate) return null;
+  const dob = new Date(birthdate + "T00:00:00");
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hadBirthdayThisYear = (today.getMonth() > dob.getMonth()) ||
+    (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hadBirthdayThisYear) age--;
+  return age;
+}
+
 /* ---- Pets page: one card per dog ---- */
 function petCardHTML(db, petId) {
   const pet = petById(db, petId);
   const lvl = petLevel(db, petId);
   const pctLvl = Math.round((lvl.into / lvl.span) * 100);
+  const age = ageFromBirthdate(pet.birthdate);
+
+  const traitsHTML = (pet.traits || []).map((t) =>
+    `<span class="tag">${t.icon} ${escapeHTML(t.label)}</span>`).join("");
+  const flavourHTML = (pet.traits || pet.snack || pet.mood) ? `
+    <div class="pet-flavour">
+      ${traitsHTML ? `<div class="pet-flavour__traits">${traitsHTML}</div>` : ""}
+      ${pet.snack ? `<div class="pet-flavour__row"><span>🍖 Favourite snack</span><span>${escapeHTML(pet.snack)}</span></div>` : ""}
+      ${pet.mood ? `<div class="pet-flavour__row"><span>💭 Current mood</span><span>${escapeHTML(pet.mood)}</span></div>` : ""}
+    </div>` : "";
 
   const discreteButtons = Object.keys(PET_DISCRETE_ACTIONS).map((key) => {
     const cfg = PET_DISCRETE_ACTIONS[key];
@@ -1038,11 +1062,13 @@ function petCardHTML(db, petId) {
           <div class="hero-char__fallback" hidden>🐾</div>
         </div>
         <div class="hero-char__level">
+          ${pet.nickname ? `<div class="hero-char__schedule">"${escapeHTML(pet.nickname)}"${age != null ? ` · ${age} year${age === 1 ? "" : "s"} old` : ""}</div>` : ""}
           <div class="hero-char__level-row">${escapeHTML(pet.name)} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
         </div>
       </div>
+      ${flavourHTML}
       <div class="nav-grid">${discreteButtons}${timeButtons}</div>
     </div>`;
 }
@@ -1136,7 +1162,7 @@ function characterPanelHTML(db, personId) {
         </div>
         <div class="hero-char__level">
           ${isKirsten ? `<div class="hero-char__schedule">${heroScheduleSummary(db)}</div>` : ""}
-          <div class="hero-char__level-row">${escapeHTML(person.name)} · Level ${lvl.level}</div>
+          <div class="hero-char__level-row">${escapeHTML(person.name)}${ageFromBirthdate(person.birthdate) != null ? ` · ${ageFromBirthdate(person.birthdate)}` : ""} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
         </div>

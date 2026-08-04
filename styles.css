@@ -311,6 +311,11 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 }
 .hero-char__blueprint svg { width: 19px; height: 19px; }
 .hero-char__blueprint:hover, .hero-char__blueprint:focus-visible { border-color: var(--accent); }
+.pet-flavour { margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pet-flavour__traits { display: flex; flex-wrap: wrap; gap: 6px; }
+.pet-flavour__row { display: flex; justify-content: space-between; font-size: .82rem; }
+.pet-flavour__row span:first-child { color: var(--muted); }
+.pet-flavour__row span:last-child { font-weight: 600; text-align: right; }
 .hero-char__top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
 .hero-char__portrait {
   flex: 0 0 auto; width: 128px; border-radius: var(--radius-sm); overflow: hidden;

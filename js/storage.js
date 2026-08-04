@@ -15,9 +15,9 @@ const DEFAULT_CALENDAR_CLIENT_ID = "1070575707230-frs2bctfil1q6f05j92uic1u6s4i1i
 function defaultData() {
   return {
     people: [
-      { id: "kirsten", name: "Kirsten", colour: "#46d6f5", baseLevel: 0 }, // arc-reactor cyan (has a calendar)
+      { id: "kirsten", name: "Kirsten", colour: "#46d6f5", baseLevel: 0, birthdate: "1995-05-13" }, // arc-reactor cyan (has a calendar)
       // Jack has no calendar — JARVIS builds one from this regular work pattern.
-      { id: "jack", name: "Jack", colour: "#e7b54a", baseLevel: 0, // Iron Man gold
+      { id: "jack", name: "Jack", colour: "#e7b54a", baseLevel: 0, birthdate: "1997-08-20", // Iron Man gold
         work: { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:30",
                 note: "Usually in by 10–10:30 · sometimes works from home" } },
     ],
@@ -190,8 +190,12 @@ function defaultData() {
     // ways: the dog's bond grows, that relationship-with-that-dog grows,
     // and the person's own level ticks up a little too.
     pets: [
-      { id: "effie", name: "Effie" },
-      { id: "oddie", name: "Oddie" },
+      { id: "effie", name: "Effie", nickname: "Eff", birthdate: "2015-04-04",
+        traits: [{ icon: "🥰", label: "Cuddle Bug" }, { icon: "🍗", label: "Snack Inspector" }, { icon: "👑", label: "Tiny Queen" }],
+        snack: "Literally all food", mood: "Judging Everyone" },
+      { id: "oddie", name: "Oddie", nickname: "Oddball", birthdate: "2022-08-26",
+        traits: [{ icon: "🎾", label: "Ball Obsessed" }, { icon: "🤪", label: "Chaos Gremlin" }, { icon: "❤️", label: "Velcro Dog" }],
+        snack: "Dad's chicken nuggets", mood: "Ready for Adventure" },
     ],
     petCare: {
       xp: { effie: 0, oddie: 0 },                                                  // each dog's own profile XP
@@ -789,6 +793,42 @@ function applySeedAdditions(db) {
   if (!db.appliedSeeds.baseLevelZero) {
     db.people.forEach((p) => { p.baseLevel = 0; });
     db.appliedSeeds.baseLevelZero = true;
+  }
+
+  // Effie & Oddie's character-card flavour (added August 2026) — her
+  // pets array already exists on-device with just {id, name}, so the new
+  // fields in defaultData() won't reach her without an explicit patch
+  // here. Age is stored as a birthdate and computed live (see
+  // petAge()) rather than a static number, so it doesn't go stale.
+  if (!db.appliedSeeds.petFlavour) {
+    const effie = db.pets.find((p) => p.id === "effie");
+    if (effie) {
+      Object.assign(effie, {
+        nickname: "Eff", birthdate: "2015-04-04",
+        traits: [{ icon: "🥰", label: "Cuddle Bug" }, { icon: "🍗", label: "Snack Inspector" }, { icon: "👑", label: "Tiny Queen" }],
+        snack: "Literally all food", mood: "Judging Everyone",
+      });
+    }
+    const oddie = db.pets.find((p) => p.id === "oddie");
+    if (oddie) {
+      Object.assign(oddie, {
+        nickname: "Oddball", birthdate: "2022-08-26",
+        traits: [{ icon: "🎾", label: "Ball Obsessed" }, { icon: "🤪", label: "Chaos Gremlin" }, { icon: "❤️", label: "Velcro Dog" }],
+        snack: "Dad's chicken nuggets", mood: "Ready for Adventure",
+      });
+    }
+    db.appliedSeeds.petFlavour = true;
+  }
+
+  // Real birthdates for both of you (added August 2026) — ages computed
+  // live from these rather than the placeholder "31" the reference art
+  // guessed for both of you (only actually correct for Kirsten).
+  if (!db.appliedSeeds.humanBirthdates) {
+    const kirsten = db.people.find((p) => p.id === "kirsten");
+    if (kirsten) kirsten.birthdate = "1995-05-13";
+    const jack = db.people.find((p) => p.id === "jack");
+    if (jack) jack.birthdate = "1997-08-20";
+    db.appliedSeeds.humanBirthdates = true;
   }
 }
 
