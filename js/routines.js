@@ -933,6 +933,125 @@ function personLevel(db, personId) {
   return { level: base + Math.floor(xp / XP_PER_LEVEL), into: xp % XP_PER_LEVEL, span: XP_PER_LEVEL, xp };
 }
 
+/* ============================================================
+   Pet care (Effie & Oddie) — each dog has its own profile (portrait,
+   level, XP), separate from either human's. Feed/water/bed are once-a-
+   day toggles; walk/play are logged in real 15-minute chunks and can be
+   tapped again and again through the day (a 45-minute walk is three
+   taps, not one). Every action feeds three numbers: the dog's own XP,
+   a per-person companionship score with that specific dog (shown as a
+   bar on THAT person's hero — Kirsten's bond with Effie and Jack's bond
+   with Effie are tracked separately, since they're different
+   relationships), and a smaller boost to the acting person's own level
+   — dog care is still real household care.
+   ============================================================ */
+const PET_XP_PER_LEVEL = 150;
+const PET_COMPANIONSHIP_CAP = 200; // companionship XP at which the bar reads 100% (still climbs past it underneath)
+const PET_DISCRETE_ACTIONS = {
+  feed:  { icon: "🍖", label: "Food",  xp: 5 },
+  water: { icon: "💧", label: "Water", xp: 5 },
+  bed:   { icon: "🛏️", label: "Bed",   xp: 5 },
+};
+const PET_TIME_ACTIONS = {
+  walk: { icon: "🚶", label: "Walk", xpPer15: 5 },
+  play: { icon: "🎾", label: "Play", xpPer15: 5 },
+};
+
+function petById(db, id) { return db.pets.find((p) => p.id === id); }
+
+function petActionDoneToday(db, petId, action) {
+  return !!db.petCare.doneToday[`${petId}|${action}|${todayKey()}`];
+}
+function petMinutesToday(db, petId, action) {
+  return db.petCare.minutesToday[`${petId}|${action}|${todayKey()}`] || 0;
+}
+
+/* Credits the dog's own XP, the acting person's companionship with that
+   dog, and a half-rate boost to that person's own level. */
+function awardPetCare(db, petId, amount) {
+  db.petCare.xp[petId] = (db.petCare.xp[petId] || 0) + amount;
+  const key = `${db.activePerson}|${petId}`;
+  db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) + amount;
+  awardXp(db, db.activePerson, Math.round(amount / 2));
+}
+
+/* Feed/water/bed — once each per day. Tapping again undoes it (no XP
+   removed, same no-guilt rule as everything else). */
+function togglePetDiscreteAction(db, petId, action) {
+  const key = `${petId}|${action}|${todayKey()}`;
+  if (db.petCare.doneToday[key]) { delete db.petCare.doneToday[key]; saveDB(db); return; }
+  db.petCare.doneToday[key] = true;
+  awardPetCare(db, petId, PET_DISCRETE_ACTIONS[action].xp);
+  saveDB(db);
+}
+
+/* Walk/play — stacks in real 15-minute increments through the day. */
+function logPetTime(db, petId, action) {
+  const key = `${petId}|${action}|${todayKey()}`;
+  db.petCare.minutesToday[key] = (db.petCare.minutesToday[key] || 0) + 15;
+  awardPetCare(db, petId, PET_TIME_ACTIONS[action].xpPer15);
+  saveDB(db);
+}
+
+function petLevel(db, petId) {
+  const xp = db.petCare.xp[petId] || 0;
+  return { level: Math.floor(xp / PET_XP_PER_LEVEL), into: xp % PET_XP_PER_LEVEL, span: PET_XP_PER_LEVEL, xp };
+}
+function companionshipPct(db, personId, petId) {
+  const xp = db.petCare.companionship[`${personId}|${petId}`] || 0;
+  return Math.min(100, Math.round((xp / PET_COMPANIONSHIP_CAP) * 100));
+}
+
+/* ---- Pets page: one card per dog ---- */
+function petCardHTML(db, petId) {
+  const pet = petById(db, petId);
+  const lvl = petLevel(db, petId);
+  const pctLvl = Math.round((lvl.into / lvl.span) * 100);
+
+  const discreteButtons = Object.keys(PET_DISCRETE_ACTIONS).map((key) => {
+    const cfg = PET_DISCRETE_ACTIONS[key];
+    const done = petActionDoneToday(db, petId, key);
+    return `
+      <button class="nav-tile ${done ? "is-done" : ""}" data-pet-tick="${petId}|${key}">
+        <span class="nav-tile__icon">${cfg.icon}</span>
+        <span class="nav-tile__label">${cfg.label}</span>
+        <span class="nav-tile__sub">${done ? "done today ✓" : "not yet"}</span>
+      </button>`;
+  }).join("");
+
+  const timeButtons = Object.keys(PET_TIME_ACTIONS).map((key) => {
+    const cfg = PET_TIME_ACTIONS[key];
+    const mins = petMinutesToday(db, petId, key);
+    return `
+      <button class="nav-tile" data-pet-time="${petId}|${key}">
+        <span class="nav-tile__icon">${cfg.icon}</span>
+        <span class="nav-tile__label">${cfg.label} +15m</span>
+        <span class="nav-tile__sub">${mins ? `${mins} min today` : "not logged yet"}</span>
+      </button>`;
+  }).join("");
+
+  return `
+    <div class="hero-char">
+      <div class="hero-char__top">
+        <div class="hero-char__portrait">
+          <img src="img/people/${petId}.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <div class="hero-char__fallback" hidden>🐾</div>
+        </div>
+        <div class="hero-char__level">
+          <div class="hero-char__level-row">${escapeHTML(pet.name)} · Level ${lvl.level}</div>
+          <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
+          <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
+        </div>
+      </div>
+      <div class="nav-grid">${discreteButtons}${timeButtons}</div>
+    </div>`;
+}
+function renderPetsPage(db) {
+  const wrap = document.getElementById("petsBody");
+  if (!wrap) return;
+  wrap.innerHTML = db.pets.map((p) => petCardHTML(db, p.id)).join("");
+}
+
 /* ---- Home hero: full-length portrait + level, with Health/Hygiene/
    Appearance as three tappable bars (not an icon ring — one clear tap
    target per group, opening exactly the jobs in it). ---- */
@@ -991,6 +1110,15 @@ function characterPanelHTML(db, personId) {
       </button>`;
   };
 
+  const petBars = db.pets.map((pet) => {
+    const val = companionshipPct(db, personId, pet.id);
+    return `
+      <button class="hero-stat" data-goto="pets">
+        <div class="hero-stat__row"><span>🐕 ${escapeHTML(pet.name)}</span><span>${val}%</span></div>
+        <div class="bar"><div class="bar__fill" style="width:${val}%"></div></div>
+      </button>`;
+  }).join("");
+
   return `
     <div class="hero-char">
       <div class="hero-char__top">
@@ -1006,7 +1134,7 @@ function characterPanelHTML(db, personId) {
         </div>
       </div>
       <div class="hero-char__stats">
-        ${isKirsten ? `${statBar("health")}${statBar("hygiene")}${statBar("appearance")}` : ""}${houseBar}
+        ${isKirsten ? `${statBar("health")}${statBar("hygiene")}${statBar("appearance")}` : ""}${houseBar}${petBars}
       </div>
     </div>`;
 }

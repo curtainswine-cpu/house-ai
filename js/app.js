@@ -74,6 +74,7 @@ function renderHomeNav(db) {
     { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
+    { view: "pets", icon: "🐾", label: "Pets", sub: db.pets.map((p) => p.name).join(" & ") },
     ...(isKirsten ? [
       { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
     ] : []),
@@ -127,6 +128,7 @@ function render() {
   // Home (calm hub)
   renderShiftBanner(DB);
   renderCharacterPanel(DB);  // Home hero: character + level + Health/Hygiene/Appearance
+  renderPetsPage(DB);        // Pets: Effie & Oddie's own profiles
   renderTodayCalendar(DB);
   renderFullCalendar(DB);
   renderHomeNav(DB);
@@ -626,6 +628,18 @@ function wireEvents() {
 
     // Health stat page: medication (bulk-ticks everything due today)
     if (e.target.closest("[data-meds-tick]")) { toggleMedsToday(DB); render(); return; }
+
+    // Pets: feed/water/bed (once-a-day toggle) and walk/play (+15 min, repeatable)
+    const petTick = e.target.closest("[data-pet-tick]");
+    if (petTick) {
+      const [petId, action] = petTick.dataset.petTick.split("|");
+      togglePetDiscreteAction(DB, petId, action); render(); return;
+    }
+    const petTime = e.target.closest("[data-pet-time]");
+    if (petTime) {
+      const [petId, action] = petTime.dataset.petTime.split("|");
+      logPetTime(DB, petId, action); render(); return;
+    }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

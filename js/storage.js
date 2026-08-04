@@ -183,6 +183,23 @@ function defaultData() {
     // time it's unified with the self-care system, not a standalone one.
     xp: { kirsten: 0, jack: 0 },
 
+    // The dogs — their own profile each (portrait, level), separate from
+    // both humans'. Care actions also build a per-person companionship
+    // score with each dog (shown as a bar on that person's own hero) and
+    // give the person a small XP boost of their own — so it counts three
+    // ways: the dog's bond grows, that relationship-with-that-dog grows,
+    // and the person's own level ticks up a little too.
+    pets: [
+      { id: "effie", name: "Effie" },
+      { id: "oddie", name: "Oddie" },
+    ],
+    petCare: {
+      xp: { effie: 0, oddie: 0 },                                                  // each dog's own profile XP
+      companionship: { "kirsten|effie": 0, "kirsten|oddie": 0, "jack|effie": 0, "jack|oddie": 0 }, // per person+dog
+      doneToday: {},     // "petId|action|YYYY-MM-DD" -> true (feed/water/bed — once each, resets daily)
+      minutesToday: {},  // "petId|action|YYYY-MM-DD" -> minutes (walk/play — stacks in 15-min steps through the day)
+    },
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -249,6 +266,12 @@ function normalize(db) {
   if (typeof db.selfCareXp === "number") { db.xp.kirsten = (db.xp.kirsten || 0) + db.selfCareXp; delete db.selfCareXp; }
   if (typeof db.xp.kirsten !== "number") db.xp.kirsten = 0;
   if (typeof db.xp.jack !== "number") db.xp.jack = 0;
+  if (!Array.isArray(db.pets) || !db.pets.length) db.pets = d.pets;
+  if (!db.petCare || typeof db.petCare !== "object") db.petCare = d.petCare;
+  db.pets.forEach((p) => { if (typeof db.petCare.xp[p.id] !== "number") db.petCare.xp[p.id] = 0; });
+  if (!db.petCare.companionship || typeof db.petCare.companionship !== "object") db.petCare.companionship = {};
+  if (!db.petCare.doneToday) db.petCare.doneToday = {};
+  if (!db.petCare.minutesToday) db.petCare.minutesToday = {};
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
