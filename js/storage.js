@@ -15,9 +15,9 @@ const DEFAULT_CALENDAR_CLIENT_ID = "1070575707230-frs2bctfil1q6f05j92uic1u6s4i1i
 function defaultData() {
   return {
     people: [
-      { id: "kirsten", name: "Kirsten", colour: "#46d6f5", baseLevel: 31 }, // arc-reactor cyan (has a calendar)
+      { id: "kirsten", name: "Kirsten", colour: "#46d6f5", baseLevel: 0 }, // arc-reactor cyan (has a calendar)
       // Jack has no calendar — JARVIS builds one from this regular work pattern.
-      { id: "jack", name: "Jack", colour: "#e7b54a", baseLevel: 31, // Iron Man gold
+      { id: "jack", name: "Jack", colour: "#e7b54a", baseLevel: 0, // Iron Man gold
         work: { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:30",
                 note: "Usually in by 10–10:30 · sometimes works from home" } },
     ],
@@ -249,7 +249,7 @@ function normalize(db) {
   if (typeof db.selfCareXp === "number") { db.xp.kirsten = (db.xp.kirsten || 0) + db.selfCareXp; delete db.selfCareXp; }
   if (typeof db.xp.kirsten !== "number") db.xp.kirsten = 0;
   if (typeof db.xp.jack !== "number") db.xp.jack = 0;
-  db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 31; });
+  db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
@@ -756,6 +756,16 @@ function applySeedAdditions(db) {
     const bits = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
     if (bits) bits.items.push({ id: uid(), text: "Bathroom scales", done: false });
     db.appliedSeeds.scalesShoppingItem = true;
+  }
+
+  // Correction: levels were briefly seeded starting at age (31) — she
+  // decided against that and wants a plain 0-start instead. This forces
+  // it once on installs that already have the old baseLevel stamped in
+  // (the normal "fill if missing" migration above won't touch a value
+  // that's already set to 31).
+  if (!db.appliedSeeds.baseLevelZero) {
+    db.people.forEach((p) => { p.baseLevel = 0; });
+    db.appliedSeeds.baseLevelZero = true;
   }
 }
 

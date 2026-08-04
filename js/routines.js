@@ -837,9 +837,9 @@ function selfCareXpForRoutine(r) {
 }
 
 /* XP — one additive-only pool per person (see db.xp comment in
-   storage.js). Level starts at that person's baseLevel (their age, by her
-   choice) rather than 1, and climbs from real XP earned — self-care ticks
-   for Kirsten, chore ticks for either of you. */
+   storage.js). Level starts at that person's baseLevel (0, by her choice)
+   rather than 1, and climbs from real XP earned — self-care ticks for
+   Kirsten, chore ticks for either of you. */
 function awardXp(db, personId, n) {
   if (!n) return;
   db.xp[personId] = (db.xp[personId] || 0) + n;
@@ -848,16 +848,46 @@ function awardXp(db, personId, n) {
 const XP_PER_LEVEL = 150;
 function personLevel(db, personId) {
   const xp = db.xp[personId] || 0;
-  const base = (personById(db, personId) || {}).baseLevel || 1;
+  const p = personById(db, personId);
+  const base = (p && typeof p.baseLevel === "number") ? p.baseLevel : 0;
   return { level: base + Math.floor(xp / XP_PER_LEVEL), into: xp % XP_PER_LEVEL, span: XP_PER_LEVEL, xp };
 }
 
 /* ---- Home hero: full-length portrait + level, with Health/Hygiene/
    Appearance as three tappable bars (not an icon ring — one clear tap
    target per group, opening exactly the jobs in it). ---- */
+/* Whole-house cleanliness — the average of every room's today-progress
+   (see roomProgress). Not gated to Kirsten's rooms list existing; reads
+   0 rooms as 100% (nothing outstanding to report). */
+function houseCleanPct(db) {
+  const rooms = db.cleaningGame.rooms;
+  if (!rooms.length) return 100;
+  const pcts = rooms.map((r) => roomProgress(db, r.id).pct);
+  return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+}
+
+/* One-line "what's next today" for the hero panel — the full schedule
+   card further down the page still has the whole list; this is just
+   enough to glance at without leaving Home. */
+function heroScheduleSummary(db) {
+  if (typeof calendarConfigured !== "function" || !calendarConfigured(db)) return "📅 Connect your calendar to see today's plan";
+  const today = eventsForDay(db.calendar.lastEvents || [], todayKey());
+  if (!today.length) return "📅 Nothing on today";
+  const next = today[0];
+  const more = today.length - 1;
+  return `📅 ${eventTime(next)} ${escapeHTML(next.summary)}${more ? ` · +${more} more` : ""}`;
+}
+
 function characterPanelHTML(db) {
   const lvl = personLevel(db, "kirsten");
   const pctLvl = Math.round((lvl.into / lvl.span) * 100);
+
+  const houseVal = houseCleanPct(db);
+  const houseBar = `
+    <button class="hero-stat" data-goto="cleaning">
+      <div class="hero-stat__row"><span>🏠 House cleaned</span><span>${houseVal}%</span></div>
+      <div class="bar"><div class="bar__fill" style="width:${houseVal}%"></div></div>
+    </button>`;
 
   const statBar = (key) => {
     const g = STAT_GROUPS[key];
@@ -880,13 +910,14 @@ function characterPanelHTML(db) {
           <div class="hero-char__fallback" hidden>K</div>
         </div>
         <div class="hero-char__level">
+          <div class="hero-char__schedule">${heroScheduleSummary(db)}</div>
           <div class="hero-char__level-row">Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
         </div>
       </div>
       <div class="hero-char__stats">
-        ${statBar("health")}${statBar("hygiene")}${statBar("appearance")}
+        ${statBar("health")}${statBar("hygiene")}${statBar("appearance")}${houseBar}
       </div>
     </div>`;
 }
