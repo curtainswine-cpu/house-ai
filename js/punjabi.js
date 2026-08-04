@@ -21,6 +21,31 @@ function speakPunjabi(text) {
   speechSynthesis.speak(u);
 }
 
+/* Language level — its own slow track. 1 XP per flashcard actually
+   flipped to check yourself (not just clicked through), 100 XP a level,
+   so it climbs the way real practice does: gradually, from repetition. */
+const LANGUAGE_XP_PER_LEVEL = 100;
+function awardLanguageXp(db, n) {
+  db.languageXp = (db.languageXp || 0) + n;
+  saveDB(db);
+}
+function languageLevel(db) {
+  const xp = db.languageXp || 0;
+  return { level: Math.floor(xp / LANGUAGE_XP_PER_LEVEL), into: xp % LANGUAGE_XP_PER_LEVEL, span: LANGUAGE_XP_PER_LEVEL, xp };
+}
+function renderLearnLevel(db) {
+  const wrap = document.getElementById("learnLevel");
+  if (!wrap) return;
+  const lvl = languageLevel(db);
+  const pct = Math.round((lvl.into / lvl.span) * 100);
+  wrap.innerHTML = `
+    <div class="glance-card" style="margin-bottom:14px">
+      <div class="glance__top"><span class="glance__label">🗣️ Language level</span><span class="glance__val">Level ${lvl.level}</span></div>
+      <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pct}%"></div></div>
+      <div class="glance__hint">${lvl.into} / ${lvl.span} XP · flip a flashcard to check yourself and earn a little</div>
+    </div>`;
+}
+
 function wordById(db, id) { return db.punjabi.words.find((w) => w.id === id); }
 
 function addWord(db, { en, pa, rom }) {
@@ -52,6 +77,7 @@ function importWords(db, text) {
 
 /* ---- Render the Learn view (switches on the sub-tab) ---- */
 function renderLearn(db) {
+  renderLearnLevel(db);
   // sub-tab active state
   document.querySelectorAll("#learnTabs .seg__btn").forEach((b) =>
     b.classList.toggle("is-active", b.dataset.learn === _learnTab));

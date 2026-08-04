@@ -183,6 +183,12 @@ function defaultData() {
     // time it's unified with the self-care system, not a standalone one.
     xp: { kirsten: 0, jack: 0 },
 
+    // Language practice (Learn Punjabi) — its own slow-climbing level,
+    // separate from the household XP pool. Awarded in small amounts (see
+    // punjabi.js) from actually using the flashcards, deliberately slow
+    // since real fluency takes many, many reps.
+    languageXp: 0,
+
     // The dogs — their own profile each (portrait, level), separate from
     // both humans'. Care actions also build a per-person companionship
     // score with each dog (shown as a bar on that person's own hero) and
@@ -270,6 +276,7 @@ function normalize(db) {
   if (typeof db.selfCareXp === "number") { db.xp.kirsten = (db.xp.kirsten || 0) + db.selfCareXp; delete db.selfCareXp; }
   if (typeof db.xp.kirsten !== "number") db.xp.kirsten = 0;
   if (typeof db.xp.jack !== "number") db.xp.jack = 0;
+  if (typeof db.languageXp !== "number") db.languageXp = 0;
   if (!Array.isArray(db.pets) || !db.pets.length) db.pets = d.pets;
   if (!db.petCare || typeof db.petCare !== "object") db.petCare = d.petCare;
   db.pets.forEach((p) => { if (typeof db.petCare.xp[p.id] !== "number") db.petCare.xp[p.id] = 0; });

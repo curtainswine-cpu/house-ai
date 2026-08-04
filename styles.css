@@ -316,6 +316,8 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .pet-flavour__row { display: flex; justify-content: space-between; font-size: .82rem; }
 .pet-flavour__row span:first-child { color: var(--muted); }
 .pet-flavour__row span:last-child { font-weight: 600; text-align: right; }
+.pet-time-tile { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.pet-time-tile .link-btn { font-size: .72rem; text-align: center; padding: 2px; }
 .hero-char__top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
 .hero-char__portrait {
   flex: 0 0 auto; width: 128px; border-radius: var(--radius-sm); overflow: hidden;

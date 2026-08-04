@@ -992,6 +992,15 @@ function logPetTime(db, petId, action) {
   awardPetCare(db, petId, PET_TIME_ACTIONS[action].xpPer15);
   saveDB(db);
 }
+/* Corrects an over-tap (e.g. meant to log one 15-min walk, hit it four
+   times) by taking 15 minutes back off today's total. XP already earned
+   isn't clawed back — same no-guilt rule as every other undo in this
+   app — this only fixes the displayed record, not the reward. */
+function undoPetTime(db, petId, action) {
+  const key = `${petId}|${action}|${todayKey()}`;
+  db.petCare.minutesToday[key] = Math.max(0, (db.petCare.minutesToday[key] || 0) - 15);
+  saveDB(db);
+}
 
 function petLevel(db, petId) {
   const xp = db.petCare.xp[petId] || 0;
@@ -1047,11 +1056,14 @@ function petCardHTML(db, petId) {
     const cfg = PET_TIME_ACTIONS[key];
     const mins = petMinutesToday(db, petId, key);
     return `
-      <button class="nav-tile" data-pet-time="${petId}|${key}">
-        <span class="nav-tile__icon">${cfg.icon}</span>
-        <span class="nav-tile__label">${cfg.label} +15m</span>
-        <span class="nav-tile__sub">${mins ? `${mins} min today` : "not logged yet"}</span>
-      </button>`;
+      <div class="pet-time-tile">
+        <button class="nav-tile" data-pet-time="${petId}|${key}">
+          <span class="nav-tile__icon">${cfg.icon}</span>
+          <span class="nav-tile__label">${cfg.label} +15m</span>
+          <span class="nav-tile__sub">${mins ? `${mins} min today` : "not logged yet"}</span>
+        </button>
+        ${mins ? `<button class="link-btn" data-pet-time-undo="${petId}|${key}">− undo last 15m</button>` : ""}
+      </div>`;
   }).join("");
 
   return `

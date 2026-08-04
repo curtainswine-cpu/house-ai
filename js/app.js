@@ -70,7 +70,6 @@ function renderHomeNav(db) {
     { view: "tasks", icon: "📋", label: isKirsten ? TASKS_NAME : "My tasks", sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
-    { view: "pets", icon: "🐾", label: "Pets", sub: db.pets.map((p) => p.name).join(" & ") },
     ...(isKirsten ? [
       { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
     ] : []),
@@ -645,6 +644,11 @@ function wireEvents() {
       const [petId, action] = petTime.dataset.petTime.split("|");
       logPetTime(DB, petId, action); render(); return;
     }
+    const petTimeUndo = e.target.closest("[data-pet-time-undo]");
+    if (petTimeUndo) {
+      const [petId, action] = petTimeUndo.dataset.petTimeUndo.split("|");
+      undoPetTime(DB, petId, action); render(); return;
+    }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");
@@ -727,7 +731,12 @@ function wireEvents() {
     const editWord = e.target.closest("[data-edit-word]");
     if (editWord) { openWordModal(DB, editWord.dataset.editWord); return; }
 
-    if (e.target.closest("[data-flip]")) { _cardFlipped = !_cardFlipped; renderLearn(DB); return; }
+    if (e.target.closest("[data-flip]")) {
+      if (!_cardFlipped) awardLanguageXp(DB, 1); // only on reveal — checking yourself is the practice moment
+      _cardFlipped = !_cardFlipped;
+      renderLearn(DB);
+      return;
+    }
     if (e.target.closest("[data-next-card]")) {
       _cardFlipped = false; _cardIdx = (_cardIdx + 1) % Math.max(1, DB.punjabi.words.length); renderLearn(DB); return;
     }
