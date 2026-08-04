@@ -61,17 +61,13 @@ const TASKS_NAME = "Mini missions";
 function renderHomeNav(db) {
   const wrap = document.getElementById("homeNav");
   if (!wrap) return;
-  const date = new Date(), dateKey = todayKey(date);
   const prog = todayProgress(db);
-  const chores = sharedChoresToday(db, date);
-  const choresDone = chores.filter((r) => isDone(db, r.id, dateKey)).length;
   const soon = foodUseSoon(db).length;
 
   const isKirsten = db.activePerson === "kirsten";
   const tiles = [
     { view: "calendar", icon: "📅", label: "Calendar", sub: "everything ahead" },
     { view: "tasks", icon: "📋", label: isKirsten ? TASKS_NAME : "My tasks", sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
-    { view: "cleaning", icon: "🧹", label: "Cleaning", sub: chores.length ? `${choresDone}/${chores.length} today` : "nothing today" },
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
     { view: "pets", icon: "🐾", label: "Pets", sub: db.pets.map((p) => p.name).join(" & ") },
@@ -157,12 +153,21 @@ function render() {
   if (_openRoomId) openRoomModal(_openRoomId);
 }
 
+/* Pets sit between the two names — not a third "who's using this" option
+   (the dogs don't get a login), just a quick shortcut living where it
+   naturally reads as part of the household lineup. */
 function renderPersonToggle() {
   const wrap = document.getElementById("personToggle");
-  wrap.innerHTML = DB.people.map((p) => `
+  const personBtn = (p) => `
     <button data-person="${p.id}" aria-pressed="${DB.activePerson === p.id}"
-      style="--person-colour:${p.colour}">${escapeHTML(p.name)}</button>
-  `).join("");
+      style="--person-colour:${p.colour}">${escapeHTML(p.name)}</button>`;
+  const kirsten = DB.people.find((p) => p.id === "kirsten");
+  const jack = DB.people.find((p) => p.id === "jack");
+  wrap.innerHTML = `
+    ${kirsten ? personBtn(kirsten) : ""}
+    <button class="person-toggle__pets" data-goto="pets" aria-label="Pets">🐾</button>
+    ${jack ? personBtn(jack) : ""}
+  `;
 }
 
 /* ---------- Modal helpers ---------- */

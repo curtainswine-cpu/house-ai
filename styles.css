@@ -101,6 +101,7 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
   color: #07101a; background: var(--person-colour, var(--accent));
   box-shadow: 0 0 10px color-mix(in srgb, var(--person-colour, var(--accent)) 40%, transparent);
 }
+.person-toggle__pets { padding: 0 10px; font-size: 1rem; }
 
 /* ---------- Views ---------- */
 .view { padding: 18px 18px 8px; animation: fade .2s ease; }
@@ -301,8 +302,15 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 /* ---------- Home hero: character + level + stat bars ---------- */
 .hero-char {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 16px; box-shadow: var(--shadow); margin-bottom: 18px;
+  padding: 16px; box-shadow: var(--shadow); margin-bottom: 18px; position: relative;
 }
+.hero-char__blueprint {
+  position: absolute; top: 12px; right: 12px; width: 38px; height: 38px;
+  border-radius: 50%; background: var(--surface-2); border: 1.5px solid var(--line);
+  display: grid; place-items: center; color: var(--ink);
+}
+.hero-char__blueprint svg { width: 19px; height: 19px; }
+.hero-char__blueprint:hover, .hero-char__blueprint:focus-visible { border-color: var(--accent); }
 .hero-char__top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
 .hero-char__portrait {
   flex: 0 0 auto; width: 128px; border-radius: var(--radius-sm); overflow: hidden;

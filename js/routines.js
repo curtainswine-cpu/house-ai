@@ -1121,6 +1121,14 @@ function characterPanelHTML(db, personId) {
 
   return `
     <div class="hero-char">
+      <button class="hero-char__blueprint" data-goto="cleaning" aria-label="Cleaning blueprint — house ${houseCleanPct(db)}% clean">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="1" />
+          <line x1="3" y1="13" x2="11" y2="13" />
+          <line x1="13" y1="3" x2="13" y2="21" />
+          <line x1="16" y1="21" x2="16" y2="17" />
+        </svg>
+      </button>
       <div class="hero-char__top">
         <div class="hero-char__portrait">
           <img src="img/people/${personId}-full.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
