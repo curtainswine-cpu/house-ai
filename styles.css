@@ -494,44 +494,92 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .jack-load__empty { color: var(--muted); font-size: .85rem; margin: 0 0 10px; line-height: 1.5; }
 .jack-load__alloc { margin-top: 10px; font-size: .85rem; }
 
-/* ---------- Cleaning companion (Kirsten only) ---------- */
-.companion {
-  display: flex; align-items: center; gap: 14px;
+/* ---------- Focus Mode (Kirsten's cleaning page, default view) ---------- */
+.focus-mode {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
-  margin-bottom: 10px;
+  border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow);
+  margin-bottom: 16px; text-align: center;
 }
-.companion__avatar {
-  font-size: 2.4rem; line-height: 1; flex: 0 0 auto;
-  filter: drop-shadow(0 0 10px var(--accent-glow));
+.focus-mode__head {
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin-bottom: 10px;
 }
-.companion__main { flex: 1; min-width: 0; }
-.companion__stage { font-weight: 650; margin-bottom: 6px; }
-.companion__xpbar {
-  height: 8px; border-radius: 999px; background: var(--surface-2);
-  border: 1px solid var(--line); overflow: hidden;
+.focus-mode__room { font-size: .85rem; color: var(--accent); margin-bottom: 4px; }
+.focus-mode__task { font-size: 1.2rem; font-weight: 650; margin-bottom: 16px; }
+.focus-mode__check {
+  width: auto; height: auto; border-radius: var(--radius-sm);
+  padding: 12px 28px; font-size: 1rem; font-weight: 650;
+  background: var(--accent-soft); border: 1.5px solid var(--accent); color: var(--accent);
 }
-.companion__xpfill {
-  height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold));
-  transition: width .4s ease;
-}
-.companion__xptext { font-size: .78rem; color: var(--muted); margin-top: 5px; font-family: var(--mono); }
-.companion__note {
-  font-size: .85rem; color: var(--muted); margin: 0 2px 16px; line-height: 1.5;
-}
+.focus-mode__check:hover { background: var(--accent); color: var(--bg); }
+.focus-mode__more { font-size: .78rem; color: var(--muted); margin-top: 12px; }
+.focus-mode__empty { color: var(--muted); font-size: .95rem; line-height: 1.5; margin: 0 0 12px; }
 
-/* ---------- Room cards (Kirsten's gamified cleaning view) ---------- */
-.room-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-.room-card {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+/* ---------- Blueprint (real spatial floor plan, one floor at a time) ---------- */
+.fp-tabs { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.fp-tab {
+  flex: 1 1 auto; min-width: 64px; padding: 9px 10px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line); background: var(--surface-2); color: var(--muted);
+  font-weight: 600; font-size: .78rem; min-height: 40px;
 }
-.room-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.room-card__icon { font-size: 1.6rem; line-height: 1; }
-.room-card__name { font-weight: 650; }
-.room-card__floor { font-size: .78rem; color: var(--muted); }
-.room-card__log { margin-left: auto; font-size: .78rem; flex: 0 0 auto; }
-.room-card__last { font-size: .8rem; color: var(--muted); margin: 6px 0 10px; }
+.fp-tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #07101a; }
+
+.fp-wrap {
+  border: 1px solid rgba(255,255,255,.25); border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 16px;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(255,255,255,.05) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255,255,255,.05) 20px),
+    #0c1830;
+}
+.fp-svg { display: block; width: 100%; height: auto; }
+.fp-stairwell {
+  fill: none; stroke: rgba(255,255,255,.2); stroke-dasharray: 4 4; stroke-width: 1.5;
+}
+.fp-room__rect {
+  stroke: rgba(255,255,255,.55); stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center;
+  transition: fill .3s ease;
+}
+.fp-room { cursor: pointer; }
+.fp-room:hover .fp-room__rect, .fp-room:focus-visible .fp-room__rect { stroke: var(--accent); }
+.fp-room--zoom { transform-box: fill-box; transform-origin: center; animation: fpZoom .16s ease forwards; }
+@keyframes fpZoom { to { transform: scale(1.06); } }
+.fp-room__dot { stroke: rgba(10,14,22,.6); stroke-width: 1; }
+.fp-room__dot--green { fill: #5bc98a; }
+.fp-room__dot--amber { fill: var(--gold); }
+.fp-room__dot--red   { fill: #e15c5c; }
+.fp-room__icon { font-size: 20px; }
+.fp-room__name { font-size: 11px; font-weight: 600; fill: var(--ink); }
+.fp-room__sub  { font-size: 9px; fill: rgba(255,255,255,.55); font-family: var(--mono); }
+
+/* Room detail modal (opened from the blueprint) */
+.room-modal__stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.room-modal__bar {
+  height: 8px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--line); overflow: hidden; margin-top: 8px;
+}
+.room-modal__bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .3s ease; }
+
+/* ---------- Laundry & waste ops panel ---------- */
+.ops-panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
+}
+.ops-panel__head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; color: var(--ink); font-weight: 650;
+  padding: 14px 16px; min-height: var(--tap); text-align: left;
+}
+.ops-panel__sub { font-size: .78rem; color: var(--muted); font-weight: 500; }
+.ops-panel__body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ops-panel__divider { height: 1px; background: var(--line); margin: 2px 0; }
+.laundry-stage { display: flex; flex-direction: column; gap: 6px; }
+.laundry-stage__row { display: flex; align-items: center; justify-content: space-between; font-size: .88rem; }
+.laundry-stage__label { color: var(--muted); }
+.laundry-stage__count { font-family: var(--mono); font-weight: 700; color: var(--ink); }
+.waste-note { font-size: .85rem; color: var(--muted); margin: 0; line-height: 1.5; }
+.waste-note--suggest { color: var(--gold); }
 
 /* Calendar source labels — per-person colour coding */
 .cal__src--kirsten { background: var(--accent-soft); color: var(--accent); }

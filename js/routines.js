@@ -140,14 +140,22 @@ function toggleDone(db, routineId, dateKey) {
   if (marking) {
     const r = db.routines.find((x) => x.id === routineId);
     if (r && r.repeat === "periodic" && r.rollOnTick) r.anchorDate = dateKey;
-
-    // Ticking a cleaning/household job feeds the cleaning companion — no
-    // separate system to learn, the chores she's already doing power it.
-    // Only ever adds XP, never removes it (ticking off, then undoing a
-    // mistake, shouldn't feel like a loss).
-    if (r && isSharedTask(r)) awardCleaningXP(db, 8);
+    if (r && isSharedTask(r)) spawnFollowUp(db, r);
   }
   saveDB(db);
+}
+
+/* ---- Follow-up rules: completing certain jobs quietly creates the next
+   one, so she doesn't have to remember to add it herself. A small named
+   lookup, not a general engine — only these specific, real chains. ---- */
+const FOLLOWUP_RULES = {
+  "Change bedding": (db) => addLaundryLoad(db, "Bedding"),
+  "Change towels": (db) => addLaundryLoad(db, "Towels"),
+  "Wash dog bedding": (db) => addLaundryLoad(db, "Dog bedding"),
+};
+function spawnFollowUp(db, r) {
+  const rule = FOLLOWUP_RULES[r.title];
+  if (rule) rule(db);
 }
 
 function byTime(a, b) { return (TIME_ORDER[a.timeOfDay] ?? 9) - (TIME_ORDER[b.timeOfDay] ?? 9); }
@@ -508,39 +516,13 @@ function renderTodayHousehold(db) {
 }
 
 /* ============================================================
-   Cleaning companion (Kirsten only) — a small character that grows
-   as household jobs get ticked and rooms get fully cleaned. XP is
-   purely additive: nothing ever decays or resets, so there's no
-   guilt for a quiet week — it just picks up again whenever she does.
+   Cleaning: interactive house blueprint (Kirsten only)
+   Default view is Focus Mode — up to 3 priority-ranked jobs, revealed
+   one at a time. "See whole house" switches to a clickable blueprint
+   where tapping a room opens its full job list.
    ============================================================ */
 
-/* Iron-Man-suit-themed growth stages, matching the JARVIS branding.
-   Beyond the last stage the companion is simply "built" — XP keeps
-   counting as a running total rather than inventing endless new tiers. */
-const CHARACTER_STAGES = [
-  { xp: 0,    mark: "Mark 0",   name: "Spark",            emoji: "🔋" },
-  { xp: 60,   mark: "Mark I",   name: "Bare Frame",       emoji: "🔧" },
-  { xp: 150,  mark: "Mark II",  name: "Plated",           emoji: "🛡️" },
-  { xp: 280,  mark: "Mark III", name: "Powered Up",       emoji: "🔴" },
-  { xp: 450,  mark: "Mark IV",  name: "Thrusters Online", emoji: "🚀" },
-  { xp: 650,  mark: "Mark V",   name: "Voice Online",     emoji: "🗣️" },
-  { xp: 900,  mark: "Mark VI",  name: "Full Suit",        emoji: "🤖" },
-  { xp: 1200, mark: "Mark VII", name: "House Guardian",   emoji: "✨" },
-];
-function characterStage(xp) {
-  let idx = 0;
-  CHARACTER_STAGES.forEach((s, i) => { if (xp >= s.xp) idx = i; });
-  const stage = CHARACTER_STAGES[idx];
-  const next = CHARACTER_STAGES[idx + 1];
-  const progress = next ? (xp - stage.xp) / (next.xp - stage.xp) : 1;
-  return { ...stage, next, progress };
-}
-
-/* Add XP — always additive, never removed (see toggleDone / logFullClean). */
-function awardCleaningXP(db, amount) {
-  if (!db.cleaningGame) db.cleaningGame = { xp: 0, rooms: [] };
-  db.cleaningGame.xp += amount;
-}
+let _cleaningMode = "focus"; // "focus" | "blueprint"
 
 /* Calm "last done" phrasing — no red/urgent colour, just informative. */
 function daysAgoLabel(dateKey) {
@@ -553,89 +535,357 @@ function daysAgoLabel(dateKey) {
   return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
 }
 
-/* Log a full room clean — stamps today's date and awards a bigger XP chunk
-   than a single chore tick (it's a bigger job). */
+/* Log a full room clean — stamps today's date and accounts for the rubbish
+   a full clean generally turns up (~2 bin bags per room, per her estimate). */
 function logFullClean(db, roomId) {
   const room = db.cleaningGame.rooms.find((r) => r.id === roomId);
   if (!room) return;
   room.lastFullClean = todayKey();
-  awardCleaningXP(db, 30);
+  addWasteBags(db, 2);
   saveDB(db);
 }
 
-/* ---- Character header card ---- */
-function renderCleaningCharacter(db) {
-  const wrap = document.getElementById("cleaningCharacter");
-  if (!wrap) return;
-  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
-
-  const xp = db.cleaningGame.xp;
-  const stage = characterStage(xp);
-  const pct = Math.round(stage.progress * 100);
-
-  const shiftType = currentShiftType(db);
-  const isWorkDay = ["longday", "night", "early", "late", "work"].includes(shiftType);
-
-  let note;
-  if (isWorkDay) {
-    note = "🏥 You're on shift today — nothing extra expected. The house can wait. 💙";
-  } else {
-    // Gently point at whichever ESTABLISHED room (one that's actually been
-    // logged at least once) has gone longest without a full clean. A
-    // never-cleaned room isn't "overdue" — it just hasn't been started yet —
-    // so it's left out of this nudge rather than treated as the most urgent.
-    const logged = db.cleaningGame.rooms.filter((r) => r.lastFullClean);
-    const oldest = logged.length
-      ? logged.reduce((a, b) => (a.lastFullClean < b.lastFullClean ? a : b))
-      : null;
-    note = oldest
-      ? `Whenever you fancy it — ${escapeHTML(oldest.name)} hasn't had a full clean in the longest (${daysAgoLabel(oldest.lastFullClean)}).`
-      : "Tick a few jobs whenever suits — no rush.";
-  }
-
-  wrap.innerHTML = `
-    <div class="companion">
-      <div class="companion__avatar">${stage.emoji}</div>
-      <div class="companion__main">
-        <div class="companion__stage">${stage.mark} — ${escapeHTML(stage.name)}</div>
-        <div class="companion__xpbar"><div class="companion__xpfill" style="width:${pct}%"></div></div>
-        <div class="companion__xptext">${stage.next
-          ? `${xp - stage.xp} / ${stage.next.xp - stage.xp} XP to ${escapeHTML(stage.next.name)}`
-          : `${xp} XP earned — fully built 🎉`}</div>
-      </div>
-    </div>
-    <p class="companion__note">${note}</p>`;
+/* Cycle a room's priority green -> amber -> red -> green. Manual only —
+   never auto-escalated from days-since-clean (that's a guilt mechanic). */
+const PRIORITY_ORDER = ["green", "amber", "red"];
+const PRIORITY_LABEL = { green: "🟢 Low priority", amber: "🟠 Medium priority", red: "🔴 High priority" };
+function cycleRoomPriority(db, roomId) {
+  const room = db.cleaningGame.rooms.find((r) => r.id === roomId);
+  if (!room) return;
+  const i = PRIORITY_ORDER.indexOf(room.priority);
+  room.priority = PRIORITY_ORDER[(i + 1) % PRIORITY_ORDER.length];
+  saveDB(db);
 }
 
-/* ---- Room cards: her real house layout, grouped by floor ---- */
-function renderCleaningRooms(db) {
-  const wrap = document.getElementById("cleaningRooms");
+/* Today's due, not-yet-done jobs for a room. Because a "once" task stays
+   due every day until it's actually ticked (see isDueOn), this already
+   folds in the room's standing deep-clean/declutter backlog alongside
+   whatever's due today from the daily/weekly/monthly rhythm — not just a
+   same-day snapshot. */
+function roomDueTasks(db, roomId) {
+  return db.routines.filter((r) => r.room === roomId && isSharedTask(r) && isDueOn(db, r, new Date()));
+}
+
+/* Rough minutes for a task, used only to give a "~20 min left" feel — not
+   tracked per-task, so no data migration needed. */
+function taskMinutes(r) {
+  if (r.repeat === "once") return 25;    // deep-clean / declutter jobs
+  if (r.repeat === "monthly") return 15;
+  return 8;                              // daily/weekly/fortnightly quick jobs
+}
+
+function roomProgress(db, roomId) {
+  const dateKey = todayKey();
+  const due = roomDueTasks(db, roomId);
+  const undone = due.filter((r) => !isDone(db, r.id, dateKey));
+  const done = due.length - undone.length;
+  const total = due.length;
+  return {
+    done, total,
+    remaining: undone.length,
+    pct: total ? Math.round((done / total) * 100) : 100,
+    mins: undone.reduce((sum, r) => sum + taskMinutes(r), 0),
+  };
+}
+
+/* ============================================================
+   Laundry — a live stage queue. "Complete washing/drying/folding" from
+   the spec isn't modelled as separate tickable tasks (that would just be
+   the same load duplicated across two systems) — advancing a load's stage
+   IS completing that step. Reaching "away" removes it: an immediate,
+   visible win rather than a pile of finished cards to scroll past.
+   ============================================================ */
+const LAUNDRY_STAGES = ["dirty", "waiting", "washing", "drying", "folded", "away"];
+const LAUNDRY_STAGE_LABEL = {
+  dirty: "Dirty", waiting: "Waiting to wash", washing: "Washing",
+  drying: "Drying", folded: "Folded", away: "Put away",
+};
+/* A load-per-worn-outfit would add 2 new cards to the queue every single
+   day forever — the opposite of calm. Daily wear tallies quietly instead,
+   and only becomes an actual load once there's realistically enough for a
+   wash (roughly a week per person). */
+const DAILY_WEAR_LOAD_THRESHOLD = 6;
+
+function addLaundryLoad(db, type, stage) {
+  db.laundry.loads.push({ id: uid(), type, stage: stage || "waiting", createdDate: todayKey() });
+}
+
+/* Move a load to its next stage; "away" clears it from the queue entirely. */
+function advanceLoadStage(db, loadId) {
+  const load = db.laundry.loads.find((l) => l.id === loadId);
+  if (!load) return;
+  const i = LAUNDRY_STAGES.indexOf(load.stage);
+  if (i === -1 || i === LAUNDRY_STAGES.length - 1) {
+    db.laundry.loads = db.laundry.loads.filter((l) => l.id !== loadId);
+  } else {
+    load.stage = LAUNDRY_STAGES[i + 1];
+  }
+  saveDB(db);
+}
+
+/* Move every load currently in `stage` forward one step at once — the
+   realistic action is "put a wash on" for the whole waiting pile, not
+   tapping each item individually. */
+function advanceStageAll(db, stage) {
+  db.laundry.loads.filter((l) => l.stage === stage).forEach((l) => advanceLoadStage(db, l.id));
+}
+
+function laundryStanding(db) {
+  const counts = {};
+  LAUNDRY_STAGES.forEach((s) => { counts[s] = 0; });
+  db.laundry.loads.forEach((l) => { counts[l.stage] = (counts[l.stage] || 0) + 1; });
+  counts.totalActive = db.laundry.loads.length;
+  return counts;
+}
+
+/* Quietly tallies today's worn outfit for each of you (once per day), and
+   turns the tally into a real load once it's worth a wash. */
+function ensureDailyWearLaundry(db) {
+  const today = todayKey();
+  if (db.laundry.lastDailyWearDate === today) return;
+  db.laundry.lastDailyWearDate = today;
+  ["kirsten", "jack"].forEach((person) => {
+    db.laundry.dailyWear[person] = (db.laundry.dailyWear[person] || 0) + 1;
+    if (db.laundry.dailyWear[person] >= DAILY_WEAR_LOAD_THRESHOLD) {
+      const label = personById(db, person);
+      addLaundryLoad(db, `${label ? label.name + "'s" : "Everyday"} clothes`, "waiting");
+      db.laundry.dailyWear[person] = 0;
+    }
+  });
+  saveDB(db);
+}
+
+/* ============================================================
+   Waste — a running estimate of bin bags waiting for a tip run. The
+   fortnightly outside-bin-day routine already exists separately; this is
+   only for rubbish that's piled up beyond what the normal bin day clears
+   (deep cleans mainly), where a car trip becomes worth planning for.
+   ============================================================ */
+/* Add a shopping item once, wherever "Bits for the house" lives — used by
+   automated rules so a triggered need actually reaches the list instead of
+   staying invisible until she happens to think of it. Silently does
+   nothing if it's already there (dedupe by text, case-insensitive). */
+function ensureShoppingItem(db, text) {
+  const list = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
+  if (!list) return;
+  const already = list.items.some((i) => i.text.toLowerCase() === text.toLowerCase());
+  if (!already) list.items.push({ id: uid(), text, done: false });
+}
+
+function addWasteBags(db, n) {
+  const wasSuggested = tipRunSuggested(db);
+  db.waste.outsideBagsWaiting = Math.max(0, db.waste.outsideBagsWaiting + n);
+  if (!wasSuggested && tipRunSuggested(db)) ensureShoppingItem(db, "Extra bin bags (tip run building up)");
+}
+function tipRunSuggested(db) {
+  return db.waste.outsideBagsWaiting >= db.waste.carCapacity - 2; // a heads-up before it's actually full
+}
+function logTipRun(db) {
+  db.waste.outsideBagsWaiting = 0;
+  db.waste.lastTipRun = todayKey();
+  saveDB(db);
+}
+
+/* ---- Laundry + waste panel (Kirsten's Cleaning page) ---- */
+function laundryWastePanelHTML(db) {
+  const counts = laundryStanding(db);
+  const stageChip = (stage) => {
+    const n = counts[stage];
+    if (!n) return "";
+    const bulkLabel = { dirty: "Bag it up", waiting: "Start washing", washing: "Move to drying", drying: "Fold it", folded: "Put it away" }[stage];
+    return `<div class="laundry-stage">
+      <div class="laundry-stage__row">
+        <span class="laundry-stage__label">${LAUNDRY_STAGE_LABEL[stage]}</span>
+        <span class="laundry-stage__count">${n}</span>
+      </div>
+      ${bulkLabel ? `<button class="btn btn--mini btn--ghost" data-laundry-advance-all="${stage}">${bulkLabel} (all ${n})</button>` : ""}
+    </div>`;
+  };
+  const stagesHTML = LAUNDRY_STAGES.filter((s) => s !== "away").map(stageChip).join("");
+
+  const waste = db.waste;
+  const wasteNote = tipRunSuggested(db)
+    ? `<p class="waste-note waste-note--suggest">🚗 ~${waste.outsideBagsWaiting} bags waiting — worth a tip run soon (car holds about ${waste.carCapacity}).</p>`
+    : `<p class="waste-note">${waste.outsideBagsWaiting ? `~${waste.outsideBagsWaiting} bag${waste.outsideBagsWaiting === 1 ? "" : "s"} waiting for a tip run.` : "No extra rubbish piled up right now."}</p>`;
+
+  return `
+    <div class="ops-panel">
+      <button class="ops-panel__head" data-toggle-ops-panel>
+        <span>🧺 Laundry &amp; waste</span>
+        <span class="ops-panel__sub">${counts.totalActive} load${counts.totalActive === 1 ? "" : "s"} on the go</span>
+      </button>
+      <div class="ops-panel__body" ${_opsPanelOpen ? "" : "hidden"}>
+        ${counts.totalActive ? stagesHTML : `<p style="color:var(--muted);font-size:.85rem;margin:4px 0">Nothing in the wash right now.</p>`}
+        <div class="ops-panel__divider"></div>
+        ${wasteNote}
+        ${waste.outsideBagsWaiting ? `<button class="btn btn--mini btn--ghost" data-log-tip-run>✓ Log a tip run</button>` : ""}
+      </div>
+    </div>`;
+}
+let _opsPanelOpen = false;
+function renderLaundryWaste(db) {
+  const wrap = document.getElementById("laundryWaste");
   if (!wrap) return;
   if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  ensureDailyWearLaundry(db);
+  wrap.innerHTML = laundryWastePanelHTML(db);
+}
 
-  const rooms = db.cleaningGame.rooms;
-  if (!rooms.length) { wrap.innerHTML = ""; return; }
+/* Is it a work day? Reused to keep Focus Mode quiet on shift days. */
+function isWorkShiftDay(db) {
+  return ["longday", "night", "early", "late", "work"].includes(currentShiftType(db));
+}
 
+/* Up to 3 due, undone room jobs. One slot is reserved for the next due
+   DAILY job (any room) — that can't wait behind a bigger backlog. The rest
+   come from the single highest-priority room that still has anything
+   outstanding, so focus stays themed to one room rather than scattering
+   across the house. */
+function focusQueue(db) {
   const dateKey = todayKey();
-  wrap.innerHTML = rooms.map((room) => {
-    const tasks = db.routines.filter((r) => r.room === room.id && isSharedTask(r)).sort(byTime);
-    const tasksHTML = tasks.length
-      ? tasks.map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true })).join("")
-      : "";
-    return `
-      <div class="room-card">
-        <div class="room-card__head">
-          <span class="room-card__icon">${room.icon || "🏠"}</span>
-          <div>
-            <div class="room-card__name">${escapeHTML(room.name)}</div>
-            <div class="room-card__floor">${escapeHTML(room.floor || "")}</div>
-          </div>
-          <button class="btn btn--mini room-card__log" data-log-full-clean="${room.id}">✓ Full clean today</button>
-        </div>
-        <div class="room-card__last">Last full clean: ${daysAgoLabel(room.lastFullClean)}</div>
-        ${tasksHTML}
-      </div>`;
-  }).join("");
+  const isOpenTask = (r) => r.room && isSharedTask(r) && isDueOn(db, r, new Date()) && !isDone(db, r.id, dateKey);
+
+  const dailyDue = db.routines.filter((r) => isOpenTask(r) && r.repeat === "daily");
+  const queue = dailyDue.length ? [dailyDue[0]] : [];
+
+  const priorityRank = { red: 0, amber: 1, green: 2 };
+  const rooms = [...db.cleaningGame.rooms].sort((a, b) => (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2));
+  for (const room of rooms) {
+    if (queue.length >= 3) break;
+    const roomTasks = db.routines.filter((r) => r.room === room.id && isOpenTask(r)).sort(byTime);
+    for (const r of roomTasks) {
+      if (queue.length >= 3) break;
+      if (!queue.includes(r)) queue.push(r);
+    }
+  }
+
+  return queue.slice(0, 3).map((r) => ({ r, room: db.cleaningGame.rooms.find((rm) => rm.id === r.room) }));
+}
+
+/* ---- Focus Mode: the default landing state ---- */
+function focusModeHTML(db) {
+  if (isWorkShiftDay(db)) {
+    return `<div class="focus-mode">
+      <div class="focus-mode__head">🎯 Today's focus</div>
+      <p class="focus-mode__empty">🏥 On shift today — nothing expected. The house can wait. 💙</p>
+      <button class="link-btn" data-goto-blueprint>browse the whole house anyway</button>
+    </div>`;
+  }
+
+  const queue = focusQueue(db);
+  if (!queue.length) {
+    return `<div class="focus-mode">
+      <div class="focus-mode__head">🎯 Today's focus</div>
+      <p class="focus-mode__empty">All clear for today. 🎉 Nothing's expected — the house can wait.</p>
+      <button class="link-btn" data-goto-blueprint>browse the whole house anyway</button>
+    </div>`;
+  }
+
+  const { r: task, room } = queue[0];
+  const more = queue.length - 1;
+  return `<div class="focus-mode">
+    <div class="focus-mode__head">🎯 Today's focus</div>
+    <div class="focus-mode__room">${room.icon || "🏠"} ${escapeHTML(room.name)}</div>
+    <div class="focus-mode__task">${escapeHTML(task.title)}</div>
+    <button class="check focus-mode__check" data-toggle="${task.id}" aria-label="Mark done">✓ Done</button>
+    ${more ? `<div class="focus-mode__more">${more} more queued after this</div>` : ""}
+    <button class="link-btn" data-goto-blueprint>see the whole house</button>
+  </div>`;
+}
+
+/* ---- Blueprint: a real spatial floor plan per level, one floor at a
+   time (a 4-level terrace can't sensibly show all floors at once on a
+   phone). Room rectangles are schematic, not measured — there's no floor
+   plan on file — but positioned front-to-back the way a narrow terrace
+   actually runs, with the stairwell in a fixed spot for orientation. ---- */
+const FLOOR_TAB_ORDER = ["Lower Ground Floor", "Ground Floor", "First Floor", "Loft Floor"];
+const FLOOR_PLAN_LAYOUT = {
+  "Lower Ground Floor": {
+    viewBox: "0 0 300 320",
+    rooms: { "Kitchen": [20, 20, 260, 280] },
+  },
+  "Ground Floor": {
+    viewBox: "0 0 300 320",
+    rooms: {
+      "Entryway":    [20, 20, 260, 70],
+      "Stairs":      [20, 100, 70, 200],
+      "Living Room": [100, 100, 180, 140],
+      "Dog Area":    [100, 250, 180, 50],
+    },
+  },
+  "First Floor": {
+    viewBox: "0 0 300 320",
+    stairwell: [20, 90, 70, 210],
+    rooms: {
+      "Landing":  [20, 20, 260, 60],
+      "Bedroom":  [100, 90, 180, 140],
+      "Bathroom": [100, 240, 180, 60],
+    },
+  },
+  "Loft Floor": {
+    viewBox: "0 0 300 320",
+    rooms: { "Loft": [20, 20, 260, 280] },
+  },
+};
+
+/* One room's rect + icon + name + live stats, coloured brighter as it's
+   completed today (a reward channel) with priority shown as a separate
+   small dot (a manual channel) — kept apart so a busy room never reads as
+   "wrong", only a quiet room reads as "not started yet". */
+function floorPlanRoomHTML(db, room, box) {
+  const [x, y, w, h] = box;
+  const prog = roomProgress(db, room.id);
+  const fillOpacity = (0.08 + (prog.pct / 100) * 0.22).toFixed(2);
+  const cx = x + w / 2, cy = y + h / 2;
+  const sub = prog.total
+    ? `${prog.remaining ? `${prog.remaining} left · ~${prog.mins}m` : "all done today"}`
+    : daysAgoLabel(room.lastFullClean);
+  return `
+    <g class="fp-room" data-open-room="${room.id}" tabindex="0" role="button" aria-label="${escapeHTML(room.name)}">
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" class="fp-room__rect" style="fill:rgba(70,214,245,${fillOpacity})" />
+      <circle cx="${x + w - 14}" cy="${y + 14}" r="5" class="fp-room__dot fp-room__dot--${room.priority || "green"}" />
+      <text x="${cx}" y="${cy - 6}" text-anchor="middle" class="fp-room__icon">${room.icon || "🏠"}</text>
+      <text x="${cx}" y="${cy + 15}" text-anchor="middle" class="fp-room__name">${escapeHTML(room.name)}</text>
+      <text x="${cx}" y="${cy + 31}" text-anchor="middle" class="fp-room__sub">${escapeHTML(sub)}</text>
+    </g>`;
+}
+
+function floorPlanSVG(db, floorName) {
+  const layout = FLOOR_PLAN_LAYOUT[floorName];
+  if (!layout) return "";
+  const roomsOnFloor = db.cleaningGame.rooms.filter((r) => r.floor === floorName);
+  const stairwell = layout.stairwell
+    ? `<rect x="${layout.stairwell[0]}" y="${layout.stairwell[1]}" width="${layout.stairwell[2]}" height="${layout.stairwell[3]}" class="fp-stairwell" />`
+    : "";
+  const roomsHTML = Object.entries(layout.rooms)
+    .map(([name, box]) => { const room = roomsOnFloor.find((r) => r.name === name); return room ? floorPlanRoomHTML(db, room, box) : ""; })
+    .join("");
+  return `<svg viewBox="${layout.viewBox}" class="fp-svg" preserveAspectRatio="xMidYMid meet">${stairwell}${roomsHTML}</svg>`;
+}
+
+let _blueprintFloor = "Ground Floor";
+function blueprintHTML(db) {
+  const rooms = db.cleaningGame.rooms;
+  if (!rooms.length) return "";
+  const floorsPresent = FLOOR_TAB_ORDER.filter((f) => rooms.some((r) => r.floor === f));
+  if (!floorsPresent.includes(_blueprintFloor)) _blueprintFloor = floorsPresent[0];
+
+  const tabs = floorsPresent.map((f) =>
+    `<button class="fp-tab" data-blueprint-floor="${escapeAttr(f)}" aria-pressed="${f === _blueprintFloor}">${escapeHTML(f.replace(" Floor", ""))}</button>`
+  ).join("");
+
+  return `
+    <button class="link-btn" data-goto-focus>‹ back to today's focus</button>
+    <div class="fp-tabs" role="tablist">${tabs}</div>
+    <div class="fp-wrap">${floorPlanSVG(db, _blueprintFloor)}</div>`;
+}
+
+function renderCleaningHouse(db) {
+  const wrap = document.getElementById("cleaningHouse");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  if (!db.cleaningGame.rooms.length) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = _cleaningMode === "blueprint" ? blueprintHTML(db) : focusModeHTML(db);
 }
 
 /* ---- Cleaning tab: shared chores (cleaning + other household) ----

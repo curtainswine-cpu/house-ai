@@ -137,12 +137,35 @@ function defaultData() {
     // Events Kirsten adds for Jack (anniversaries, appointments etc.)
     jackEvents: [],
 
-    // Cleaning, gamified for Kirsten — her companion grows as household
-    // tasks + full room cleans get logged. XP only ever goes up (no
-    // decay/loss — that would cut against the no-guilt design).
+    // Cleaning — an interactive house blueprint for Kirsten. Click a room,
+    // see its jobs. Priority (green/amber/red) is set by HER, never
+    // auto-escalated from days-since-clean — that would be a guilt
+    // mechanic, which cuts against the no-guilt design.
     cleaningGame: {
-      xp: 0,
-      rooms: [], // { id, name, floor, icon, lastFullClean: "YYYY-MM-DD"|null }
+      rooms: [], // { id, name, floor, icon, lastFullClean, priority, notes }
+    },
+
+    // Laundry — a live stage queue rather than a flat task. Each load moves
+    // dirty -> waiting -> washing -> drying -> folded -> away; reaching
+    // "away" removes it (no lingering "done" pile — immediate reward, not
+    // a hoarded list). dailyWear tallies daily-worn clothes per person and
+    // only becomes an actual load once there's realistically enough for a
+    // wash (see DAILY_WEAR_LOAD_THRESHOLD) — a load-per-day would just spam
+    // the queue, which is the opposite of what a laundry tracker is for.
+    laundry: {
+      loads: [], // { id, type, stage, createdDate }
+      lastDailyWearDate: null,
+      dailyWear: { kirsten: 0, jack: 0 },
+    },
+
+    // Waste — how full the "waiting for a tip run" pile is. Only rubbish
+    // she can't do anything about tonight (the outside bin already has its
+    // own fortnightly "Bins out" routine + a one-off "missed it" task,
+    // kept separate). carCapacity is roughly how many bags fit in the car.
+    waste: {
+      outsideBagsWaiting: 0,
+      carCapacity: 10,
+      lastTipRun: null,
     },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
@@ -200,8 +223,13 @@ function normalize(db) {
   if (!db.shopping || !Array.isArray(db.shopping.lists)) db.shopping = d.shopping;
   if (!Array.isArray(db.jackEvents)) db.jackEvents = [];
   if (!db.cleaningGame || typeof db.cleaningGame !== "object") db.cleaningGame = d.cleaningGame;
-  if (typeof db.cleaningGame.xp !== "number") db.cleaningGame.xp = 0;
   if (!Array.isArray(db.cleaningGame.rooms)) db.cleaningGame.rooms = [];
+  if (!db.laundry || typeof db.laundry !== "object") db.laundry = d.laundry;
+  if (!Array.isArray(db.laundry.loads)) db.laundry.loads = [];
+  if (!db.laundry.dailyWear || typeof db.laundry.dailyWear !== "object") db.laundry.dailyWear = { kirsten: 0, jack: 0 };
+  if (!db.waste || typeof db.waste !== "object") db.waste = d.waste;
+  if (typeof db.waste.outsideBagsWaiting !== "number") db.waste.outsideBagsWaiting = 0;
+  if (typeof db.waste.carCapacity !== "number") db.waste.carCapacity = 10;
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
@@ -431,8 +459,6 @@ function applySeedAdditions(db) {
       { id: kitchenId, name: "Kitchen", floor: "Lower floor", icon: "🍳", lastFullClean: "2026-08-03" },
       { id: livingRoomId, name: "Living room & entry hall", floor: "Main floor", icon: "🛋️", lastFullClean: "2026-08-04" },
     );
-    db.cleaningGame.xp += 60; // 2 rooms x 30 XP, as if logged just now
-
     // Dryer filter/condenser clean — UK manufacturer guidance is roughly
     // monthly for normal use; first one due now since it hasn't been done
     // on any known schedule yet.
@@ -482,6 +508,194 @@ function applySeedAdditions(db) {
       );
     }
     db.appliedSeeds.storageShoppingItems = true;
+  }
+
+  // ============================================================
+  // Full house blueprint (added August 2026) — corrects the earlier
+  // guessed floor names/layout now she's given the real one, splits the
+  // combined "Living room & entry hall" into two rooms, and seeds her
+  // complete task lists. Runs as a correction pass since the two seeds
+  // above are already applied on her device (editing their literals alone
+  // wouldn't reach her).
+  // ============================================================
+  if (!db.appliedSeeds.blueprintRebuild) {
+    // ---- Fix floor names ----
+    db.cleaningGame.rooms.forEach((r) => {
+      if (r.floor === "Main floor") r.floor = "Ground Floor";
+      if (r.floor === "Lower floor") r.floor = "Lower Ground Floor";
+      if (r.floor === "Third floor") r.floor = "First Floor";
+      if (r.floor === "Top floor") r.floor = "Loft Floor";
+    });
+
+    // ---- Split the combined room. Keeping its existing id as "Living
+    // Room" means the dryer routine (already tagged to that id) doesn't
+    // need repointing — it lands in Living Room. Say so, in case that's
+    // actually the Entryway. ----
+    const combined = db.cleaningGame.rooms.find((r) => r.name === "Living room & entry hall");
+    if (combined) {
+      combined.name = "Living Room";
+      combined.icon = "🛋️";
+      db.cleaningGame.rooms.push({
+        id: uid(), name: "Entryway", floor: "Ground Floor", icon: "🚪",
+        lastFullClean: combined.lastFullClean,
+      });
+    }
+
+    // ---- Manual priority (Green/Amber/Red) + notes on every room. Never
+    // auto-escalated from days-since-clean — that would be a guilt
+    // mechanic; she sets/changes this herself from the room view. ----
+    const PRIORITY_DEFAULTS = {
+      "Kitchen": "green", "Living Room": "green", "Entryway": "amber",
+      "Bedroom": "amber", "Bathroom": "red", "Landing": "green", "Loft": "red",
+    };
+    db.cleaningGame.rooms.forEach((r) => {
+      if (!r.priority) r.priority = PRIORITY_DEFAULTS[r.name] || "green";
+      if (r.notes == null) r.notes = "";
+    });
+
+    // ---- New rooms that didn't exist at all yet ----
+    const dogAreaId = uid(), stairsId = uid();
+    db.cleaningGame.rooms.push(
+      { id: dogAreaId, name: "Dog Area", floor: "Ground Floor", icon: "🐾", lastFullClean: null, priority: "amber", notes: "" },
+      { id: stairsId, name: "Stairs", floor: "Ground Floor", icon: "🪜", lastFullClean: null, priority: "green", notes: "" },
+    );
+
+    const roomId = (name) => (db.cleaningGame.rooms.find((r) => r.name === name) || {}).id;
+    const entrywayId = roomId("Entryway");
+    const livingRoomId = roomId("Living Room");
+    const kitchenId = roomId("Kitchen");
+    const bedroomId = roomId("Bedroom");
+    const bathroomId = roomId("Bathroom");
+    const landingId = roomId("Landing");
+
+    // ---- Task builders. "once" = shows until ticked, then gone (used for
+    // declutter/organise/deep-clean jobs). Weekly tasks default to Sunday —
+    // edit any of them individually if a different day suits better. ----
+    const T = (title, room, repeat, extra) => Object.assign(
+      { id: uid(), title, area: "cleaning", assignedTo: "either", timeOfDay: "anytime", room, repeat, steps: [] },
+      extra || {}
+    );
+    const daily = (title, room) => T(title, room, "daily");
+    const weekly = (title, room) => T(title, room, "weekly", { repeatDay: 0 });
+    const once = (title, room, steps) => T(title, room, "once", steps ? { steps } : undefined);
+    const monthly = (title, room, anchor) => T(title, room, "monthly", { anchorDate: anchor || "2026-08-04" });
+
+    const newTasks = [
+      // Entryway
+      once("Sort coats", entrywayId), once("Donate unwanted coats", entrywayId), once("Organise shoes", entrywayId),
+      weekly("Hoover", entrywayId), weekly("Mop floor", entrywayId), weekly("Dust skirting boards", entrywayId),
+      // Living Room
+      weekly("Hoover", livingRoomId), weekly("Dust", livingRoomId),
+      weekly("General tidy", livingRoomId), weekly("Remove dog hair", livingRoomId),
+      // Dog Area
+      weekly("Empty dog crate", dogAreaId), weekly("Wash dog bedding", dogAreaId),
+      monthly("Clean and disinfect crate", dogAreaId), monthly("Replace bedding", dogAreaId),
+      // Stairs (all three flights — whole house)
+      weekly("Hoover all stairs", stairsId), once("Carpet clean all stairs", stairsId), weekly("Dust stairs", stairsId),
+      // Kitchen — daily
+      daily("Empty dishwasher", kitchenId), daily("Load dishwasher", kitchenId), daily("Wipe surfaces", kitchenId),
+      daily("Clean hob", kitchenId), daily("Empty bin", kitchenId), daily("Sweep floor", kitchenId),
+      // Kitchen — weekly
+      weekly("Mop floor", kitchenId), weekly("Clean microwave", kitchenId), weekly("Wipe cupboard fronts", kitchenId),
+      weekly("Clean sink", kitchenId), weekly("Clean fridge shelves", kitchenId),
+      // Kitchen — deep clean / organisation
+      once("Clean inside cupboards", kitchenId), once("Organise under sink", kitchenId), once("Clean fridge", kitchenId),
+      once("Clean freezer", kitchenId), once("Clean oven", kitchenId), once("Clean behind appliances", kitchenId),
+      once("Declutter food cupboards", kitchenId), once("Organise spices", kitchenId),
+      // Bedroom — cleaning
+      weekly("Change bedding", bedroomId), weekly("Hoover", bedroomId), once("Carpet clean", bedroomId),
+      weekly("Dust", bedroomId), monthly("Clean windows", bedroomId),
+      // Bedroom — organisation
+      once("Sort clothes", bedroomId), once("Donate unwanted clothes", bedroomId), once("Organise wardrobe", bedroomId),
+      // Bedroom — makeup
+      once("Dispose of expired makeup products", bedroomId), once("Organise makeup", bedroomId),
+      monthly("Clean makeup brushes", bedroomId),
+      // Bedroom — storage projects (shopping items already on her list)
+      once("Sort bedding into sets for under-bed storage", bedroomId), once("Sort towels into sets", bedroomId),
+      once("Organise shoes into storage tubs", bedroomId),
+      // Bathroom
+      once("Full declutter", bathroomId), once("Clean cupboards", bathroomId),
+      weekly("Clean toilet", bathroomId), weekly("Clean sink", bathroomId), weekly("Clean bath/shower", bathroomId),
+      weekly("Mop floor", bathroomId), weekly("Remove limescale from shower screen", bathroomId),
+      once("Replace toilet seat", bathroomId, ["Fixings are stuck — try penetrating oil + 10 min wait, then a hairdryer on the bolt (metal expands); hacksaw through the bolt as a last resort"]),
+      // Landing
+      weekly("Hoover", landingId), once("Carpet clean", landingId),
+      weekly("Dust", landingId), weekly("Clean skirting boards", landingId),
+    ];
+    newTasks.forEach((t) => db.routines.push(t));
+
+    // Whole-house dust — not tied to one room, shows in "Other jobs".
+    db.routines.push(weekly("Dust throughout house", null));
+
+    // Superseded by the itemised kitchen daily list above (same jobs, more
+    // specific — keeping both would just duplicate).
+    db.routines = db.routines.filter((r) => r.title !== "Kitchen reset");
+
+    // ---- Two projects (only two — Coats/storage/shoe-sorting etc. stay as
+    // plain room tasks above; turning every list into a project would put
+    // 5+ "Next:" cards on Mini missions at once). ----
+    db.projects.push(
+      {
+        id: uid(), emoji: "🗄️", title: "Kirsten's corner",
+        steps: [
+          { title: "Empty everything out", done: false },
+          { title: "Categorise items", done: false },
+          { title: "Throw away rubbish", done: false },
+          { title: "Donate unwanted items", done: false },
+          { title: "Create a storage solution", done: false },
+          { title: "Decorate", done: false },
+          { title: "Maintain it", done: false },
+        ],
+      },
+      {
+        id: uid(), emoji: "📦", title: "Loft reorganisation",
+        steps: [
+          { title: "Hoover the loft", done: false },
+          { title: "Dust the loft", done: false },
+          { title: "Carpet clean the loft", done: false },
+          { title: "Sort everything: keep / donate / sell / bin / belongs elsewhere", done: false },
+          { title: "Reorganise into a proper hangout space", done: false },
+        ],
+      },
+    );
+
+    // ---- Shopping — the items not already on her list ----
+    const bits = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
+    if (bits) {
+      bits.items.push(
+        { id: uid(), text: "Limescale remover", done: false },
+        { id: uid(), text: "Carpet shampoo", done: false },
+        { id: uid(), text: "Replacement toilet seat", done: false },
+        { id: uid(), text: "Penetrating oil (WD-40)", done: false },
+        { id: uid(), text: "Cleaning cloths", done: false },
+        { id: uid(), text: "Dog bedding detergent", done: false },
+      );
+    }
+
+    db.appliedSeeds.blueprintRebuild = true;
+  }
+
+  // ============================================================
+  // Household Operations expansion (added August 2026) — the laundry
+  // stage tracker + bin/waste tracking. Seeds her actual stated backlog
+  // (~8 loads waiting to wash, ~4 clean loads waiting to be put away) so
+  // the queue starts matching reality instead of empty, and adds the one
+  // bathroom task doc 2 names as a laundry trigger that wasn't in the
+  // original room list (towels).
+  // ============================================================
+  if (!db.appliedSeeds.householdOps) {
+    const bathroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bathroom") || {}).id;
+    if (bathroomId) {
+      db.routines.push({
+        id: uid(), title: "Change towels", area: "cleaning", room: bathroomId,
+        assignedTo: "either", timeOfDay: "anytime", repeat: "weekly", repeatDay: 0, steps: [],
+      });
+    }
+
+    for (let i = 0; i < 8; i++) db.laundry.loads.push({ id: uid(), type: "Mixed wash", stage: "waiting", createdDate: todayKey() });
+    for (let i = 0; i < 4; i++) db.laundry.loads.push({ id: uid(), type: "Mixed wash", stage: "folded", createdDate: todayKey() });
+
+    db.appliedSeeds.householdOps = true;
   }
 }
 

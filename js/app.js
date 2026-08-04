@@ -134,8 +134,8 @@ function render() {
   // The other pages
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
-  renderCleaningCharacter(DB); // Cleaning companion header (Kirsten only)
-  renderCleaningRooms(DB);     // Room cards, gamified (Kirsten only)
+  renderCleaningHouse(DB);   // Focus Mode / house blueprint (Kirsten only)
+  renderLaundryWaste(DB);    // Laundry & waste ops panel (Kirsten only)
   renderCleaning(DB);        // Cleaning
   renderJackLoad(DB);        // Jack's task load panel (Kirsten's cleaning view)
   renderShopping(DB);        // Shopping (sticky notes)
@@ -145,6 +145,10 @@ function render() {
   renderProjectsManager(DB); // Manage → projects
   renderMoneyView(DB);       // More → Money
   renderLearn(DB);           // More → Learn
+
+  // Keep an open room modal live (e.g. ticking a job inside it should
+  // update its progress/last-clean text without needing to close/reopen).
+  if (_openRoomId) openRoomModal(_openRoomId);
 }
 
 function renderPersonToggle() {
@@ -156,14 +160,69 @@ function renderPersonToggle() {
 }
 
 /* ---------- Modal helpers ---------- */
+// Tracks which room's modal is open (if any) so render() can refresh its
+// content live. Any OTHER modal opening clears it — openRoomModal re-sets
+// it immediately after calling openModal, so only that modal keeps refreshing.
+let _openRoomId = null;
+
 function openModal(title, bodyHTML) {
+  _openRoomId = null;
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = bodyHTML;
   document.getElementById("modalRoot").hidden = false;
 }
 function closeModal() {
+  _openRoomId = null;
   document.getElementById("modalRoot").hidden = true;
   document.getElementById("modalBody").innerHTML = "";
+}
+
+/* ---------- Room detail (tap a room on the blueprint) ---------- */
+function openRoomModal(roomId) {
+  const room = DB.cleaningGame.rooms.find((r) => r.id === roomId);
+  if (!room) return;
+  const dateKey = todayKey();
+  const allTasks = DB.routines.filter((r) => r.room === roomId && isSharedTask(r));
+  const groups = [["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["once", "One-off / deep clean"]];
+  const grouped = groups.map(([key, label]) => {
+    const list = allTasks.filter((r) => r.repeat === key).sort(byTime);
+    if (!list.length) return "";
+    return `<div class="time-group">${label}</div>` +
+      list.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("");
+  }).join("");
+  // Some rooms' work lives in a Project (staged, one-step-at-a-time) rather
+  // than a flat task list — point to it instead of saying "no jobs".
+  const linkedProject = DB.projects.find((p) => p.title.toLowerCase().includes(room.name.toLowerCase()));
+  const tasksHTML = grouped || (linkedProject
+    ? `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">📋 This room's work is tracked as a project — "${escapeHTML(linkedProject.title)}" in Mini missions / Routines → Projects.</p>`
+    : `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">No jobs added for this room yet.</p>`);
+
+  const prog = roomProgress(DB, roomId);
+  const progressText = prog.total
+    ? `${prog.pct}% done today · ${prog.remaining} left${prog.remaining ? ` · ~${prog.mins} min` : ""}`
+    : "Nothing due today";
+
+  openModal(`${room.icon || "🏠"} ${room.name}`, `
+    <p style="margin:0 0 10px;color:var(--muted);font-size:.85rem">${escapeHTML(room.floor || "")}</p>
+    <div class="room-modal__stats">
+      <button class="chip" data-cycle-priority="${room.id}">${PRIORITY_LABEL[room.priority] || PRIORITY_LABEL.green}</button>
+      <span class="tag">${progressText}</span>
+    </div>
+    ${prog.total ? `<div class="room-modal__bar"><div class="room-modal__bar-fill" style="width:${prog.pct}%"></div></div>` : ""}
+    <p style="margin:10px 0 12px;color:var(--muted);font-size:.85rem">Last full clean: ${daysAgoLabel(room.lastFullClean)}</p>
+    <button class="btn btn--mini" data-log-full-clean="${room.id}">✓ Log a full clean today</button>
+    <div class="field" style="margin-top:14px">
+      <label for="roomNotes">Notes</label>
+      <textarea id="roomNotes" rows="2" placeholder="Anything worth remembering about this room…">${escapeHTML(room.notes || "")}</textarea>
+    </div>
+    <div style="margin-top:14px">${tasksHTML}</div>
+  `);
+  _openRoomId = roomId;
+
+  document.getElementById("roomNotes").onblur = () => {
+    room.notes = document.getElementById("roomNotes").value;
+    saveDB(DB);
+  };
 }
 
 /* ---------- Add / edit routine ----------
@@ -556,9 +615,42 @@ function wireEvents() {
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
 
-    // Cleaning companion: log a full room clean
+    // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");
     if (logClean) { logFullClean(DB, logClean.dataset.logFullClean); render(); return; }
+
+    // Cleaning: switch between Focus Mode and the whole-house blueprint
+    if (e.target.closest("[data-goto-blueprint]")) { _cleaningMode = "blueprint"; render(); return; }
+    if (e.target.closest("[data-goto-focus]")) { _cleaningMode = "focus"; render(); return; }
+
+    // Cleaning: tap a room on the floor plan to zoom in and see its jobs.
+    // Brief scale-up on the tapped room, then the detail modal — skipped
+    // instantly if reduce-motion is on.
+    const openRoom = e.target.closest("[data-open-room]");
+    if (openRoom) {
+      const roomId = openRoom.dataset.openRoom;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) { openRoomModal(roomId); return; }
+      openRoom.classList.add("fp-room--zoom");
+      setTimeout(() => openRoomModal(roomId), 160);
+      return;
+    }
+
+    // Cleaning: switch which floor the blueprint is showing
+    const floorTab = e.target.closest("[data-blueprint-floor]");
+    if (floorTab) { _blueprintFloor = floorTab.dataset.blueprintFloor; render(); return; }
+
+    // Cleaning: cycle a room's manual priority (green -> amber -> red)
+    const cyclePriority = e.target.closest("[data-cycle-priority]");
+    if (cyclePriority) { cycleRoomPriority(DB, cyclePriority.dataset.cyclePriority); render(); return; }
+
+    // Laundry & waste ops panel
+    if (e.target.closest("[data-toggle-ops-panel]")) { _opsPanelOpen = !_opsPanelOpen; render(); return; }
+    const advanceLoad = e.target.closest("[data-laundry-advance]");
+    if (advanceLoad) { advanceLoadStage(DB, advanceLoad.dataset.laundryAdvance); render(); return; }
+    const advanceAll = e.target.closest("[data-laundry-advance-all]");
+    if (advanceAll) { advanceStageAll(DB, advanceAll.dataset.laundryAdvanceAll); saveDB(DB); render(); return; }
+    if (e.target.closest("[data-log-tip-run]")) { logTipRun(DB); render(); return; }
 
     // Project: tick the next step (advances the chain)
     const pstep = e.target.closest("[data-project-step]");
