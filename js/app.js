@@ -651,6 +651,13 @@ function wireEvents() {
       const [petId, action] = petTimeUndo.dataset.petTimeUndo.split("|");
       undoPetTime(DB, petId, action); render(); return;
     }
+    const petFleaWorm = e.target.closest("[data-pet-fleaworm]");
+    if (petFleaWorm) { logFleaWorm(DB, petFleaWorm.dataset.petFleaworm); render(); return; }
+    const petClaw = e.target.closest("[data-pet-claw]");
+    if (petClaw) {
+      const [petId, clawKey] = petClaw.dataset.petClaw.split("|");
+      toggleClaw(DB, petId, clawKey); render(); return;
+    }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

@@ -318,6 +318,23 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .pet-flavour__row span:last-child { font-weight: 600; text-align: right; }
 .pet-time-tile { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
 .pet-time-tile .link-btn { font-size: .72rem; text-align: center; padding: 2px; }
+
+.claw-tracker {
+  margin-top: 14px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 12px;
+}
+.claw-tracker__head { display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; font-weight: 650; margin-bottom: 10px; flex-wrap: wrap; gap: 4px; }
+.claw-tracker__cycles { font-size: .74rem; color: var(--muted); font-weight: 500; }
+.claw-paw { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.claw-paw:last-of-type { margin-bottom: 0; }
+.claw-paw__label { font-size: .74rem; color: var(--muted); flex: 0 0 82px; }
+.claw-paw__dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.claw-dot {
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line);
+  background: var(--surface); padding: 0;
+}
+.claw-dot.is-done { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 6px var(--accent-soft); }
+.claw-tracker__unlock { margin: 10px 0 0; font-size: .82rem; color: var(--gold); line-height: 1.4; }
 .hero-char__top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
 .hero-char__portrait {
   flex: 0 0 auto; width: 128px; border-radius: var(--radius-sm); overflow: hidden;
@@ -415,6 +432,7 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 }
 .shift-banner.shift--work  { background: var(--gold-soft);   border-color: var(--gold); }
 .shift-banner.shift--night { background: rgba(108,123,176,.16); border-color: #6c7bb0; }
+.hero-char__level .shift-banner { padding: 8px 10px; margin-bottom: 8px; font-size: .8rem; }
 .shift-banner.shift--off   { background: var(--accent-soft); border-color: var(--accent); }
 .shift-banner .btn--mini, .shift-banner .link-btn { margin-top: 8px; margin-right: 6px; }
 .lift-actions { display: inline-flex; gap: 6px; margin-left: 4px; }

@@ -307,8 +307,7 @@ function renderTodayCalendar(db) {
         ${sharedHTML}
         <div class="goal__actions"><button class="link-btn" data-cal-week>see this week</button></div>
         <div id="calWeek" hidden>${weekHTML}</div>
-      </div>
-      ${liftBlockForJack(db, person, wfhToday)}`;
+      </div>`;
     return;
   }
 

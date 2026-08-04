@@ -208,6 +208,21 @@ function defaultData() {
       companionship: { "kirsten|effie": 0, "kirsten|oddie": 0, "jack|effie": 0, "jack|oddie": 0 }, // per person+dog
       doneToday: {},     // "petId|action|YYYY-MM-DD" -> true (feed/water/bed — once each, resets daily)
       minutesToday: {},  // "petId|action|YYYY-MM-DD" -> minutes (walk/play — stacks in 15-min steps through the day)
+
+      // Flea & worm treatment — every 3 months. She doesn't know when it
+      // was last done for either dog, so this starts fresh from nothing
+      // rather than guessing a date (no guilt for an unknown history).
+      fleaWorm: { effie: { lastDone: null }, oddie: { lastDone: null } },
+
+      // Claw clipping — every 2 weeks, but logged one claw at a time since
+      // neither dog will sit through a full set in one go. 18 claws per
+      // dog (5 on each front paw incl. dewclaw, 4 on each back paw).
+      // Completing all 18 resets the set and counts as one cycle; two
+      // completed cycles unlocks a suggestion to book jabs + insurance.
+      claws: {
+        effie: { done: {}, cyclesCompleted: 0 },
+        oddie: { done: {}, cyclesCompleted: 0 },
+      },
     },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
@@ -283,6 +298,12 @@ function normalize(db) {
   if (!db.petCare.companionship || typeof db.petCare.companionship !== "object") db.petCare.companionship = {};
   if (!db.petCare.doneToday) db.petCare.doneToday = {};
   if (!db.petCare.minutesToday) db.petCare.minutesToday = {};
+  if (!db.petCare.fleaWorm) db.petCare.fleaWorm = {};
+  if (!db.petCare.claws) db.petCare.claws = {};
+  db.pets.forEach((p) => {
+    if (!db.petCare.fleaWorm[p.id]) db.petCare.fleaWorm[p.id] = { lastDone: null };
+    if (!db.petCare.claws[p.id]) db.petCare.claws[p.id] = { done: {}, cyclesCompleted: 0 };
+  });
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data

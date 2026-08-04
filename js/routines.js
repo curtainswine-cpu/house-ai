@@ -1010,6 +1010,49 @@ function undoPetTime(db, petId, action) {
   saveDB(db);
 }
 
+/* ---- Flea & worm treatment — every 3 months, unknown history so this
+   starts fresh rather than guessing. ---- */
+function fleaWormDue(db, petId) {
+  const last = db.petCare.fleaWorm[petId].lastDone;
+  return last != null && daysBetween(new Date(last + "T00:00:00"), new Date()) >= 90;
+}
+function logFleaWorm(db, petId) {
+  db.petCare.fleaWorm[petId].lastDone = todayKey();
+  awardPetCare(db, petId, 15); // bigger, infrequent job
+  saveDB(db);
+}
+
+/* ---- Claw clipping — 18 claws per dog (5 front incl. dewclaw, 4 back),
+   logged one at a time since neither dog sits for a full set. Finishing
+   all 18 resets the set and banks a completed cycle; two cycles unlocks
+   the jabs/insurance suggestion with a bonus (harder to reach = worth
+   more). ---- */
+const PAW_CLAW_COUNTS = { fl: 5, fr: 5, bl: 4, br: 4 };
+const PAW_LABELS = { fl: "Front left", fr: "Front right", bl: "Back left", br: "Back right" };
+function clawKeys() {
+  const keys = [];
+  Object.keys(PAW_CLAW_COUNTS).forEach((paw) => {
+    for (let i = 1; i <= PAW_CLAW_COUNTS[paw]; i++) keys.push(`${paw}-${i}`);
+  });
+  return keys; // 18 total
+}
+function clawsDoneCount(db, petId) {
+  const done = db.petCare.claws[petId].done;
+  return clawKeys().filter((k) => done[k]).length;
+}
+function toggleClaw(db, petId, clawKey) {
+  const rec = db.petCare.claws[petId];
+  if (rec.done[clawKey]) { delete rec.done[clawKey]; saveDB(db); return; }
+  rec.done[clawKey] = true;
+  awardPetCare(db, petId, 3); // fiddly one-at-a-time job, worth a bit more than a quick tick
+  if (clawKeys().every((k) => rec.done[k])) {
+    rec.done = {};
+    rec.cyclesCompleted = (rec.cyclesCompleted || 0) + 1;
+    if (rec.cyclesCompleted === 2) awardPetCare(db, petId, 50); // milestone — harder to attain, worth more
+  }
+  saveDB(db);
+}
+
 function petLevel(db, petId) {
   const xp = db.petCare.xp[petId] || 0;
   return { level: Math.floor(xp / PET_XP_PER_LEVEL), into: xp % PET_XP_PER_LEVEL, span: PET_XP_PER_LEVEL, xp };
@@ -1074,6 +1117,34 @@ function petCardHTML(db, petId) {
       </div>`;
   }).join("");
 
+  const fw = db.petCare.fleaWorm[petId];
+  const fleaWormTile = `
+    <button class="nav-tile ${fleaWormDue(db, petId) ? "" : "is-done"}" data-pet-fleaworm="${petId}">
+      <span class="nav-tile__icon">💊</span>
+      <span class="nav-tile__label">Flea &amp; worm</span>
+      <span class="nav-tile__sub">${fw.lastDone ? daysAgoLabel(fw.lastDone) : "not logged yet"}</span>
+    </button>`;
+
+  const clawRec = db.petCare.claws[petId];
+  const clawsDone = clawsDoneCount(db, petId);
+  const pawRows = Object.keys(PAW_CLAW_COUNTS).map((paw) => {
+    const dots = Array.from({ length: PAW_CLAW_COUNTS[paw] }, (_, i) => {
+      const key = `${paw}-${i + 1}`;
+      const done = !!clawRec.done[key];
+      return `<button class="claw-dot ${done ? "is-done" : ""}" data-pet-claw="${petId}|${key}" aria-label="${PAW_LABELS[paw]} claw ${i + 1}"></button>`;
+    }).join("");
+    return `<div class="claw-paw"><span class="claw-paw__label">${PAW_LABELS[paw]}</span><span class="claw-paw__dots">${dots}</span></div>`;
+  }).join("");
+  const clawTracker = `
+    <div class="claw-tracker">
+      <div class="claw-tracker__head">
+        <span>💅 Claws — ${clawsDone} / 18 this round</span>
+        <span class="claw-tracker__cycles">${clawRec.cyclesCompleted} cycle${clawRec.cyclesCompleted === 1 ? "" : "s"} completed</span>
+      </div>
+      ${pawRows}
+      ${clawRec.cyclesCompleted >= 2 ? `<p class="claw-tracker__unlock">🎉 Claws have been consistently trimmed — worth booking jabs &amp; insurance now.</p>` : ""}
+    </div>`;
+
   return `
     <div class="hero-char">
       <div class="hero-char__top">
@@ -1089,7 +1160,8 @@ function petCardHTML(db, petId) {
         </div>
       </div>
       ${flavourHTML}
-      <div class="nav-grid">${discreteButtons}${timeButtons}</div>
+      <div class="nav-grid">${discreteButtons}${timeButtons}${fleaWormTile}</div>
+      ${clawTracker}
     </div>`;
 }
 function renderPetsPage(db) {
@@ -1191,6 +1263,7 @@ function characterPanelHTML(db, personId) {
         </div>
         <div class="hero-char__level">
           <button class="hero-char__schedule" data-goto="calendar">${heroScheduleSummary(db, personId)}</button>
+          ${!isKirsten && typeof liftBlockForJack === "function" ? liftBlockForJack(db) : ""}
           <div class="hero-char__level-row">${escapeHTML(person.name)}${ageFromBirthdate(person.birthdate) != null ? ` · ${ageFromBirthdate(person.birthdate)}` : ""} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
