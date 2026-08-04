@@ -494,6 +494,45 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .jack-load__empty { color: var(--muted); font-size: .85rem; margin: 0 0 10px; line-height: 1.5; }
 .jack-load__alloc { margin-top: 10px; font-size: .85rem; }
 
+/* ---------- Cleaning companion (Kirsten only) ---------- */
+.companion {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+  margin-bottom: 10px;
+}
+.companion__avatar {
+  font-size: 2.4rem; line-height: 1; flex: 0 0 auto;
+  filter: drop-shadow(0 0 10px var(--accent-glow));
+}
+.companion__main { flex: 1; min-width: 0; }
+.companion__stage { font-weight: 650; margin-bottom: 6px; }
+.companion__xpbar {
+  height: 8px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--line); overflow: hidden;
+}
+.companion__xpfill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold));
+  transition: width .4s ease;
+}
+.companion__xptext { font-size: .78rem; color: var(--muted); margin-top: 5px; font-family: var(--mono); }
+.companion__note {
+  font-size: .85rem; color: var(--muted); margin: 0 2px 16px; line-height: 1.5;
+}
+
+/* ---------- Room cards (Kirsten's gamified cleaning view) ---------- */
+.room-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.room-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.room-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.room-card__icon { font-size: 1.6rem; line-height: 1; }
+.room-card__name { font-weight: 650; }
+.room-card__floor { font-size: .78rem; color: var(--muted); }
+.room-card__log { margin-left: auto; font-size: .78rem; flex: 0 0 auto; }
+.room-card__last { font-size: .8rem; color: var(--muted); margin: 6px 0 10px; }
+
 /* Calendar source labels — per-person colour coding */
 .cal__src--kirsten { background: var(--accent-soft); color: var(--accent); }
 .cal__src--jack { background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); }

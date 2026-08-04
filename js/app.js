@@ -134,6 +134,8 @@ function render() {
   // The other pages
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
+  renderCleaningCharacter(DB); // Cleaning companion header (Kirsten only)
+  renderCleaningRooms(DB);     // Room cards, gamified (Kirsten only)
   renderCleaning(DB);        // Cleaning
   renderJackLoad(DB);        // Jack's task load panel (Kirsten's cleaning view)
   renderShopping(DB);        // Shopping (sticky notes)
@@ -553,6 +555,10 @@ function wireEvents() {
 
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
+
+    // Cleaning companion: log a full room clean
+    const logClean = e.target.closest("[data-log-full-clean]");
+    if (logClean) { logFullClean(DB, logClean.dataset.logFullClean); render(); return; }
 
     // Project: tick the next step (advances the chain)
     const pstep = e.target.closest("[data-project-step]");

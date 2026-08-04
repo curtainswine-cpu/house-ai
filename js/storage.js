@@ -137,6 +137,14 @@ function defaultData() {
     // Events Kirsten adds for Jack (anniversaries, appointments etc.)
     jackEvents: [],
 
+    // Cleaning, gamified for Kirsten — her companion grows as household
+    // tasks + full room cleans get logged. XP only ever goes up (no
+    // decay/loss — that would cut against the no-guilt design).
+    cleaningGame: {
+      xp: 0,
+      rooms: [], // { id, name, floor, icon, lastFullClean: "YYYY-MM-DD"|null }
+    },
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -191,6 +199,9 @@ function normalize(db) {
   if (!Array.isArray(db.food.importedIds)) db.food.importedIds = [];
   if (!db.shopping || !Array.isArray(db.shopping.lists)) db.shopping = d.shopping;
   if (!Array.isArray(db.jackEvents)) db.jackEvents = [];
+  if (!db.cleaningGame || typeof db.cleaningGame !== "object") db.cleaningGame = d.cleaningGame;
+  if (typeof db.cleaningGame.xp !== "number") db.cleaningGame.xp = 0;
+  if (!Array.isArray(db.cleaningGame.rooms)) db.cleaningGame.rooms = [];
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
@@ -406,6 +417,38 @@ function applySeedAdditions(db) {
       steps: ["For the meal planner app — cover + all the recipe pages"],
     });
     db.appliedSeeds.cookbookMonthly = true;
+  }
+
+  // Cleaning game — seed her real house layout (a 4-level back-to-back
+  // terrace, roadside only). Two floors known so far; more to come as she
+  // describes them. Credits the two full cleans she's already done this
+  // week as if logged through the game, so the companion doesn't start
+  // from zero despite the work already being done (added August 2026).
+  if (!db.appliedSeeds.cleaningGameRooms) {
+    const kitchenId = uid();
+    const livingRoomId = uid();
+    db.cleaningGame.rooms.push(
+      { id: kitchenId, name: "Kitchen", floor: "Lower floor", icon: "🍳", lastFullClean: "2026-08-03" },
+      { id: livingRoomId, name: "Living room & entry hall", floor: "Main floor", icon: "🛋️", lastFullClean: "2026-08-04" },
+    );
+    db.cleaningGame.xp += 60; // 2 rooms x 30 XP, as if logged just now
+
+    // Dryer filter/condenser clean — UK manufacturer guidance is roughly
+    // monthly for normal use; first one due now since it hasn't been done
+    // on any known schedule yet.
+    db.routines.push({
+      id: uid(),
+      title: "Clean dryer filter/condenser",
+      area: "cleaning",
+      room: livingRoomId,
+      assignedTo: "either",
+      timeOfDay: "anytime",
+      repeat: "monthly",
+      anchorDate: "2026-08-04",
+      steps: [],
+    });
+
+    db.appliedSeeds.cleaningGameRooms = true;
   }
 }
 

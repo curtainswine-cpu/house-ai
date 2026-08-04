@@ -140,6 +140,12 @@ function toggleDone(db, routineId, dateKey) {
   if (marking) {
     const r = db.routines.find((x) => x.id === routineId);
     if (r && r.repeat === "periodic" && r.rollOnTick) r.anchorDate = dateKey;
+
+    // Ticking a cleaning/household job feeds the cleaning companion — no
+    // separate system to learn, the chores she's already doing power it.
+    // Only ever adds XP, never removes it (ticking off, then undoing a
+    // mistake, shouldn't feel like a loss).
+    if (r && isSharedTask(r)) awardCleaningXP(db, 8);
   }
   saveDB(db);
 }
@@ -501,22 +507,157 @@ function renderTodayHousehold(db) {
     </button>`;
 }
 
-/* ---- Cleaning tab: shared chores (cleaning + other household) ---- */
+/* ============================================================
+   Cleaning companion (Kirsten only) — a small character that grows
+   as household jobs get ticked and rooms get fully cleaned. XP is
+   purely additive: nothing ever decays or resets, so there's no
+   guilt for a quiet week — it just picks up again whenever she does.
+   ============================================================ */
+
+/* Iron-Man-suit-themed growth stages, matching the JARVIS branding.
+   Beyond the last stage the companion is simply "built" — XP keeps
+   counting as a running total rather than inventing endless new tiers. */
+const CHARACTER_STAGES = [
+  { xp: 0,    mark: "Mark 0",   name: "Spark",            emoji: "🔋" },
+  { xp: 60,   mark: "Mark I",   name: "Bare Frame",       emoji: "🔧" },
+  { xp: 150,  mark: "Mark II",  name: "Plated",           emoji: "🛡️" },
+  { xp: 280,  mark: "Mark III", name: "Powered Up",       emoji: "🔴" },
+  { xp: 450,  mark: "Mark IV",  name: "Thrusters Online", emoji: "🚀" },
+  { xp: 650,  mark: "Mark V",   name: "Voice Online",     emoji: "🗣️" },
+  { xp: 900,  mark: "Mark VI",  name: "Full Suit",        emoji: "🤖" },
+  { xp: 1200, mark: "Mark VII", name: "House Guardian",   emoji: "✨" },
+];
+function characterStage(xp) {
+  let idx = 0;
+  CHARACTER_STAGES.forEach((s, i) => { if (xp >= s.xp) idx = i; });
+  const stage = CHARACTER_STAGES[idx];
+  const next = CHARACTER_STAGES[idx + 1];
+  const progress = next ? (xp - stage.xp) / (next.xp - stage.xp) : 1;
+  return { ...stage, next, progress };
+}
+
+/* Add XP — always additive, never removed (see toggleDone / logFullClean). */
+function awardCleaningXP(db, amount) {
+  if (!db.cleaningGame) db.cleaningGame = { xp: 0, rooms: [] };
+  db.cleaningGame.xp += amount;
+}
+
+/* Calm "last done" phrasing — no red/urgent colour, just informative. */
+function daysAgoLabel(dateKey) {
+  if (!dateKey) return "not logged yet";
+  const days = daysBetween(new Date(dateKey + "T00:00:00"), new Date());
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  const weeks = Math.round(days / 7);
+  return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+}
+
+/* Log a full room clean — stamps today's date and awards a bigger XP chunk
+   than a single chore tick (it's a bigger job). */
+function logFullClean(db, roomId) {
+  const room = db.cleaningGame.rooms.find((r) => r.id === roomId);
+  if (!room) return;
+  room.lastFullClean = todayKey();
+  awardCleaningXP(db, 30);
+  saveDB(db);
+}
+
+/* ---- Character header card ---- */
+function renderCleaningCharacter(db) {
+  const wrap = document.getElementById("cleaningCharacter");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+
+  const xp = db.cleaningGame.xp;
+  const stage = characterStage(xp);
+  const pct = Math.round(stage.progress * 100);
+
+  const shiftType = currentShiftType(db);
+  const isWorkDay = ["longday", "night", "early", "late", "work"].includes(shiftType);
+
+  let note;
+  if (isWorkDay) {
+    note = "🏥 You're on shift today — nothing extra expected. The house can wait. 💙";
+  } else {
+    // Gently point at whichever room has gone longest without a full clean.
+    const rooms = db.cleaningGame.rooms;
+    const oldest = rooms.length
+      ? rooms.reduce((a, b) => {
+          if (!a.lastFullClean) return a;
+          if (!b.lastFullClean) return b;
+          return a.lastFullClean < b.lastFullClean ? a : b;
+        })
+      : null;
+    note = oldest
+      ? `Whenever you fancy it — ${escapeHTML(oldest.name)} hasn't had a full clean in the longest (${daysAgoLabel(oldest.lastFullClean)}).`
+      : "Tick a few jobs whenever suits — no rush.";
+  }
+
+  wrap.innerHTML = `
+    <div class="companion">
+      <div class="companion__avatar">${stage.emoji}</div>
+      <div class="companion__main">
+        <div class="companion__stage">${stage.mark} — ${escapeHTML(stage.name)}</div>
+        <div class="companion__xpbar"><div class="companion__xpfill" style="width:${pct}%"></div></div>
+        <div class="companion__xptext">${stage.next
+          ? `${xp - stage.xp} / ${stage.next.xp - stage.xp} XP to ${escapeHTML(stage.next.name)}`
+          : `${xp} XP earned — fully built 🎉`}</div>
+      </div>
+    </div>
+    <p class="companion__note">${note}</p>`;
+}
+
+/* ---- Room cards: her real house layout, grouped by floor ---- */
+function renderCleaningRooms(db) {
+  const wrap = document.getElementById("cleaningRooms");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+
+  const rooms = db.cleaningGame.rooms;
+  if (!rooms.length) { wrap.innerHTML = ""; return; }
+
+  const dateKey = todayKey();
+  wrap.innerHTML = rooms.map((room) => {
+    const tasks = db.routines.filter((r) => r.room === room.id && isSharedTask(r)).sort(byTime);
+    const tasksHTML = tasks.length
+      ? tasks.map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true })).join("")
+      : "";
+    return `
+      <div class="room-card">
+        <div class="room-card__head">
+          <span class="room-card__icon">${room.icon || "🏠"}</span>
+          <div>
+            <div class="room-card__name">${escapeHTML(room.name)}</div>
+            <div class="room-card__floor">${escapeHTML(room.floor || "")}</div>
+          </div>
+          <button class="btn btn--mini room-card__log" data-log-full-clean="${room.id}">✓ Full clean today</button>
+        </div>
+        <div class="room-card__last">Last full clean: ${daysAgoLabel(room.lastFullClean)}</div>
+        ${tasksHTML}
+      </div>`;
+  }).join("");
+}
+
+/* ---- Cleaning tab: shared chores (cleaning + other household) ----
+   Jack sees the full flat list, unchanged. Kirsten sees only jobs NOT
+   tagged to a room here — room-tagged ones live inside their room card. */
 function renderCleaning(db) {
   const wrap = document.getElementById("cleaningList");
   if (!wrap) return;
   const dateKey = todayKey();
-  const cleaning = db.routines.filter((r) => r.area === "cleaning").sort(byTime);
-  const household = db.routines.filter((r) => r.area === "household").sort(byTime);
+  const isKirsten = db.activePerson === "kirsten";
+  const cleaning = db.routines.filter((r) => r.area === "cleaning" && (!isKirsten || !r.room)).sort(byTime);
+  const household = db.routines.filter((r) => r.area === "household" && (!isKirsten || !r.room)).sort(byTime);
   if (!cleaning.length && !household.length) {
-    wrap.innerHTML = emptyState("🧹", "No household jobs yet", "Add cleaning or chores you share — bins, hoovering, kitchen.");
+    wrap.innerHTML = isKirsten ? "" : emptyState("🧹", "No household jobs yet", "Add cleaning or chores you share — bins, hoovering, kitchen.");
     return;
   }
   const section = (label, list) => list.length
     ? `<div class="time-group">${label}</div>` +
       list.map((r) => routineCardHTML(db, r, dateKey, { compact: true, editable: true })).join("")
     : "";
-  wrap.innerHTML = section("Cleaning", cleaning) + section("Other household", household);
+  wrap.innerHTML = section(isKirsten ? "Other jobs" : "Cleaning", cleaning) + section("Other household", household);
 }
 
 /* ---- Jack's task load panel (shown to Kirsten on the Cleaning page) ----
