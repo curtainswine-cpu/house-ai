@@ -725,6 +725,24 @@ function applySeedAdditions(db) {
     );
     db.appliedSeeds.selfCareRoutines = true;
   }
+
+  // ============================================================
+  // Appearance category (added August 2026) — the Home character panel
+  // grew a third stat group (Health / Hygiene / Appearance) and needed
+  // four routines that didn't exist yet. Hair dye is "every six months
+  // minimum" — modelled as periodic + rollOnTick, same as lash/brow, so
+  // doing it early just restarts the 6-month clock from that date rather
+  // than sticking to a rigid calendar.
+  // ============================================================
+  if (!db.appliedSeeds.appearanceRoutines) {
+    db.routines.push(
+      { id: uid(), title: "Apply skin oil", area: "me", assignedTo: "kirsten", timeOfDay: "morning", repeat: "daily", steps: [] },
+      { id: uid(), title: "Brush hair", area: "me", assignedTo: "kirsten", timeOfDay: "morning", repeat: "daily", steps: [] },
+      { id: uid(), title: "Shave", area: "me", assignedTo: "kirsten", timeOfDay: "anytime", repeat: "weekly", repeatDay: 0, steps: [] },
+      { id: uid(), title: "Dye hair", area: "me", assignedTo: "kirsten", timeOfDay: "anytime", repeat: "periodic", intervalDays: 183, rollOnTick: true, anchorDate: todayKey(), steps: [] },
+    );
+    db.appliedSeeds.appearanceRoutines = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

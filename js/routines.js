@@ -751,10 +751,24 @@ function renderLaundryWaste(db) {
    a made-up number would be worse than no number.
    ============================================================ */
 const SELF_CARE = {
-  teeth: { icon: "🦷", label: "Teeth", titles: ["Brush teeth"], cycleDays: 2, dailyDue: true },
-  meds:  { icon: "💊", label: "Meds",  titles: ["Morning meds + vitamins", "Biotin supplement (every other day)", "Magnesium supplement (every other day)", "Iron supplement"], cycleDays: 2, dailyDue: true },
-  hair:  { icon: "💇", label: "Hair",  titles: ["Wash hair"], cycleDays: 10, dailyDue: false },
-  bath:  { icon: "🛁", label: "Bath",  titles: ["Bath/shower"], cycleDays: 6, dailyDue: false },
+  teeth:       { icon: "🦷", label: "Teeth",         titles: ["Brush teeth"], cycleDays: 2, dailyDue: true },
+  meds:        { icon: "💊", label: "Meds",          titles: ["Morning meds + vitamins", "Biotin supplement (every other day)", "Magnesium supplement (every other day)", "Iron supplement"], cycleDays: 2, dailyDue: true },
+  hairWash:    { icon: "💇", label: "Wash hair",      titles: ["Wash hair"], cycleDays: 10, dailyDue: false },
+  hairBrush:   { icon: "💆", label: "Brush hair",     titles: ["Brush hair"], cycleDays: 2, dailyDue: true },
+  bath:        { icon: "🛁", label: "Bath",          titles: ["Bath/shower"], cycleDays: 6, dailyDue: false },
+  skinOil:     { icon: "✨", label: "Skin oil",       titles: ["Apply skin oil"], cycleDays: 2, dailyDue: true },
+  hairDye:     { icon: "🎨", label: "Hair dye",       titles: ["Dye hair"], cycleDays: 183, dailyDue: false },
+  shave:       { icon: "🪒", label: "Shave",          titles: ["Shave"], cycleDays: 9, dailyDue: false },
+  lashesBrows: { icon: "💅", label: "Lashes/brows",   titles: ["Lash infill + brow wax/tint"], cycleDays: 23, dailyDue: false },
+};
+
+/* Home page groups this into three clickable stats — health (meds +
+   hydration), hygiene (washing/cleanliness), appearance (grooming/styling
+   that's more "how I present" than "am I clean"). */
+const STAT_GROUPS = {
+  health:     { icon: "❤️", label: "Health",     items: ["meds"], includeHydration: true },
+  hygiene:    { icon: "🧼", label: "Hygiene",    items: ["teeth", "bath", "hairWash", "hairBrush"] },
+  appearance: { icon: "💄", label: "Appearance", items: ["skinOil", "hairDye", "shave", "lashesBrows"] },
 };
 
 function selfCareRoutines(db, key) {
@@ -793,12 +807,24 @@ function selfCareStatus(db, key) {
   return { last, gauge: recencyGauge(last, cfg.cycleDays), due, routines };
 }
 
-function hygieneStat(db) {
-  const t = selfCareStatus(db, "teeth").gauge, h = selfCareStatus(db, "hair").gauge, b = selfCareStatus(db, "bath").gauge;
-  return Math.round((t + h + b) / 3);
-}
-function healthStat(db) { return selfCareStatus(db, "meds").gauge; }
 function hydrationStat(db) { return pct(trackerFor(db, todayKey()).waterMl, db.goals.waterMl); }
+
+/* Blended 0–100 for a stat group — same "never reads as failing" spirit
+   as the individual gauges, just averaged across the group's items. */
+function statGroupGauge(db, groupKey) {
+  const g = STAT_GROUPS[groupKey];
+  const gauges = g.items.map((k) => selfCareStatus(db, k).gauge);
+  if (g.includeHydration) gauges.push(hydrationStat(db));
+  return Math.round(gauges.reduce((a, b) => a + b, 0) / gauges.length);
+}
+/* Anything in this group due today and not yet done? (Or hydration short
+   of today's goal, for Health.) Drives the small dot on the stat bar. */
+function statGroupDue(db, groupKey) {
+  const g = STAT_GROUPS[groupKey];
+  const itemDue = g.items.some((k) => selfCareStatus(db, k).due);
+  const hydrationDue = g.includeHydration && trackerFor(db, todayKey()).waterMl < db.goals.waterMl;
+  return itemDue || hydrationDue;
+}
 
 /* Self-care XP — additive only. Bath/hair are bigger acts of self-care
    than a quick daily tick, so they earn more. */
@@ -824,58 +850,41 @@ function personLevel(db, personId) {
   return { level: base + Math.floor(xp / XP_PER_LEVEL), into: xp % XP_PER_LEVEL, span: XP_PER_LEVEL, xp };
 }
 
-/* ---- Character panel: portrait + icon ring + gauges ---- */
+/* ---- Home hero: full-length portrait + level, with Health/Hygiene/
+   Appearance as three tappable bars (not an icon ring — one clear tap
+   target per group, opening exactly the jobs in it). ---- */
 function characterPanelHTML(db) {
   const lvl = personLevel(db, "kirsten");
   const pctLvl = Math.round((lvl.into / lvl.span) * 100);
 
-  const iconBtn = (key) => {
-    const cfg = SELF_CARE[key];
-    const status = selfCareStatus(db, key);
-    const sub = status.last ? daysAgoLabel(status.last) : "not logged yet";
+  const statBar = (key) => {
+    const g = STAT_GROUPS[key];
+    const val = statGroupGauge(db, key);
     return `
-      <button class="cc-icon" data-selfcare="${key}" aria-label="${cfg.label}">
-        ${status.due ? `<span class="cc-icon__due"></span>` : ""}
-        <span class="cc-icon__glyph">${cfg.icon}</span>
-        <span class="cc-icon__label">${cfg.label}</span>
-        <span class="cc-icon__sub">${sub}</span>
+      <button class="hero-stat" data-statgroup="${key}">
+        <div class="hero-stat__row">
+          <span>${g.icon} ${g.label}</span>
+          <span>${statGroupDue(db, key) ? `<span class="hero-stat__due"></span>` : ""}${val}%</span>
+        </div>
+        <div class="bar"><div class="bar__fill" style="width:${val}%"></div></div>
       </button>`;
   };
-  const t = trackerFor(db, todayKey());
-  const hydrationBtn = `
-    <button class="cc-icon" data-water-add aria-label="Hydration">
-      ${t.waterMl < db.goals.waterMl ? `<span class="cc-icon__due"></span>` : ""}
-      <span class="cc-icon__glyph">💧</span>
-      <span class="cc-icon__label">Hydration</span>
-      <span class="cc-icon__sub">${litres(t.waterMl)} / ${litres(db.goals.waterMl)} L</span>
-    </button>`;
-
-  const statBar = (label, val) => `
-    <div class="cc-stat">
-      <div class="cc-stat__row"><span>${label}</span><span>${val}%</span></div>
-      <div class="bar"><div class="bar__fill" style="width:${val}%"></div></div>
-    </div>`;
 
   return `
-    <div class="char-panel">
-      <div class="char-panel__top">
-        <div class="char-panel__portrait">
-          <img src="img/people/kirsten.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
-          <div class="char-panel__fallback" hidden>K</div>
+    <div class="hero-char">
+      <div class="hero-char__top">
+        <div class="hero-char__portrait">
+          <img src="img/people/kirsten-full.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <div class="hero-char__fallback" hidden>K</div>
         </div>
-        <div class="char-panel__level">
-          <div class="char-panel__level-row">Level ${lvl.level}</div>
+        <div class="hero-char__level">
+          <div class="hero-char__level-row">Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
-          <div class="char-panel__level-sub">${lvl.into} / ${lvl.span} XP</div>
+          <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
         </div>
       </div>
-      <div class="cc-icons">
-        ${iconBtn("teeth")}${iconBtn("meds")}${iconBtn("hair")}${iconBtn("bath")}${hydrationBtn}
-      </div>
-      <div class="cc-stats">
-        ${statBar("Hygiene", hygieneStat(db))}
-        ${statBar("Health", healthStat(db))}
-        ${statBar("Hydration", hydrationStat(db))}
+      <div class="hero-char__stats">
+        ${statBar("health")}${statBar("hygiene")}${statBar("appearance")}
       </div>
     </div>`;
 }
@@ -908,7 +917,7 @@ function renderCleaningLevel(db) {
 }
 
 function renderCharacterPanel(db) {
-  const wrap = document.getElementById("characterPanel");
+  const wrap = document.getElementById("homeCharacter");
   if (!wrap) return;
   if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
   wrap.innerHTML = characterPanelHTML(db);

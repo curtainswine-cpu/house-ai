@@ -293,39 +293,35 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .bar__fill--gold { background: var(--gold); box-shadow: 0 0 8px var(--gold-soft); }
 .goal__actions { display: flex; gap: 8px; margin-top: 10px; }
 
-/* ---------- Self-care character panel (Health page) ---------- */
-.char-panel {
+/* ---------- Home hero: character + level + stat bars ---------- */
+.hero-char {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px;
+  padding: 16px; box-shadow: var(--shadow); margin-bottom: 18px;
 }
-.char-panel__top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
-.char-panel__portrait {
-  flex: 0 0 auto; width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
-  border: 2px solid var(--accent); box-shadow: 0 0 12px var(--accent-glow); position: relative;
+.hero-char__top { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
+.hero-char__portrait {
+  flex: 0 0 auto; width: 128px; border-radius: var(--radius-sm); overflow: hidden;
+  border: 2px solid var(--accent); box-shadow: 0 0 14px var(--accent-glow); position: relative;
+  background: var(--surface-2);
 }
-.char-panel__portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; display: block; }
-.char-panel__fallback {
-  width: 100%; height: 100%; display: grid; place-items: center;
-  background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 1.6rem;
+.hero-char__portrait img { width: 100%; height: auto; display: block; }
+.hero-char__fallback {
+  width: 128px; height: 170px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 2.4rem;
 }
-.char-panel__level { flex: 1; min-width: 0; }
-.char-panel__level-row { font-weight: 650; margin-bottom: 6px; }
-.char-panel__level-sub { font-size: .75rem; color: var(--muted); font-family: var(--mono); margin-top: 4px; }
+.hero-char__level { flex: 1; min-width: 0; padding-bottom: 4px; }
+.hero-char__level-row { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.hero-char__level-sub { font-size: .78rem; color: var(--muted); font-family: var(--mono); margin-top: 5px; }
 
-.cc-icons { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 14px; }
-.cc-icon {
-  flex: 0 0 auto; min-width: 76px; background: var(--surface-2); border: 1.5px solid var(--line);
-  border-radius: var(--radius-sm); padding: 10px 8px; display: flex; flex-direction: column;
-  align-items: center; gap: 2px; color: var(--ink); position: relative; min-height: var(--tap);
+.hero-char__stats { display: flex; flex-direction: column; gap: 10px; }
+.hero-stat {
+  width: 100%; text-align: left; background: var(--surface-2); border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm); padding: 10px 12px; color: var(--ink); font-family: inherit; min-height: var(--tap);
 }
-.cc-icon:hover, .cc-icon:focus-visible { border-color: var(--accent); }
-.cc-icon__due { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
-.cc-icon__glyph { font-size: 1.3rem; }
-.cc-icon__label { font-size: .75rem; font-weight: 650; }
-.cc-icon__sub { font-size: .66rem; color: var(--muted); font-family: var(--mono); }
-
-.cc-stats { display: flex; flex-direction: column; gap: 10px; }
-.cc-stat__row { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); margin-bottom: 5px; }
+.hero-stat:hover, .hero-stat:focus-visible { border-color: var(--accent); }
+.hero-stat__row { display: flex; justify-content: space-between; font-size: .85rem; font-weight: 650; margin-bottom: 6px; align-items: center; }
+.hero-stat__row span:last-child { font-family: var(--mono); font-weight: 500; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+.hero-stat__due { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); display: inline-block; }
 
 /* ---------- Level strip (Cleaning page, both of you) ---------- */
 .level-strip {

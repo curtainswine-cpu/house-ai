@@ -127,6 +127,7 @@ function render() {
 
   // Home (calm hub)
   renderShiftBanner(DB);
+  renderCharacterPanel(DB);  // Home hero: character + level + Health/Hygiene/Appearance
   renderTodayCalendar(DB);
   renderFullCalendar(DB);
   renderHomeNav(DB);
@@ -141,7 +142,6 @@ function render() {
   renderJackLoad(DB);        // Jack's task load panel (Kirsten's cleaning view)
   renderShopping(DB);        // Shopping (sticky notes)
   renderFood(DB);            // Food
-  renderCharacterPanel(DB);  // Health: self-care character panel (Kirsten only)
   renderTodayHealth(DB);     // Health
   renderRoutinesView(DB);    // Manage → routines
   renderProjectsManager(DB); // Manage → projects
@@ -227,20 +227,34 @@ function openRoomModal(roomId) {
   };
 }
 
-/* ---------- Self-care icon tap (Health page character panel) ---------- */
-function openSelfCareModal(key) {
-  const cfg = SELF_CARE[key];
-  if (!cfg) return;
+/* ---------- Stat group tap (Home hero: Health / Hygiene / Appearance) ---------- */
+function openStatGroupModal(groupKey) {
+  const g = STAT_GROUPS[groupKey];
+  if (!g) return;
   const dateKey = todayKey();
-  const routines = selfCareRoutines(DB, key).sort(byTime);
-  const listHTML = routines.length
-    ? routines.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("")
-    : `<p style="color:var(--muted);font-size:.88rem;margin:0">Nothing set up for this yet.</p>`;
-  const status = selfCareStatus(DB, key);
-  openModal(`${cfg.icon} ${cfg.label}`, `
-    <p style="margin:0 0 10px;color:var(--muted);font-size:.85rem">Last done: ${status.last ? daysAgoLabel(status.last) : "not logged yet"}</p>
-    ${listHTML}
-  `);
+
+  let body = "";
+  if (g.includeHydration) {
+    const t = trackerFor(DB, todayKey());
+    body += `
+      <div class="field">
+        <label>💧 Hydration — ${litres(t.waterMl)} / ${litres(DB.goals.waterMl)} L</label>
+        <div class="chip-row">
+          <button class="chip" data-water="${DB.goals.glassMl}">+ ${DB.goals.glassMl} ml</button>
+          <button class="chip" data-water-add>a specific amount…</button>
+        </div>
+      </div>`;
+  }
+  g.items.forEach((key) => {
+    const cfg = SELF_CARE[key];
+    const routines = selfCareRoutines(DB, key).sort(byTime);
+    if (!routines.length) return;
+    body += `<div class="time-group">${cfg.icon} ${cfg.label} — ${daysAgoLabel(selfCareStatus(DB, key).last)}</div>` +
+      routines.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("");
+  });
+  if (!body) body = `<p style="color:var(--muted);font-size:.88rem;margin:0">Nothing set up for this yet.</p>`;
+
+  openModal(`${g.icon} ${g.label}`, body);
 }
 
 /* ---------- Add / edit routine ----------
@@ -633,9 +647,9 @@ function wireEvents() {
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
 
-    // Health: tap a self-care icon to see/tick its jobs
-    const selfCareIcon = e.target.closest("[data-selfcare]");
-    if (selfCareIcon) { openSelfCareModal(selfCareIcon.dataset.selfcare); return; }
+    // Home: tap a Health/Hygiene/Appearance bar to see/tick its jobs
+    const statGroup = e.target.closest("[data-statgroup]");
+    if (statGroup) { openStatGroupModal(statGroup.dataset.statgroup); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");
