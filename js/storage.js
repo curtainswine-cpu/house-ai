@@ -15,9 +15,9 @@ const DEFAULT_CALENDAR_CLIENT_ID = "1070575707230-frs2bctfil1q6f05j92uic1u6s4i1i
 function defaultData() {
   return {
     people: [
-      { id: "kirsten", name: "Kirsten", colour: "#46d6f5" }, // arc-reactor cyan (has a calendar)
+      { id: "kirsten", name: "Kirsten", colour: "#46d6f5", baseLevel: 31 }, // arc-reactor cyan (has a calendar)
       // Jack has no calendar — JARVIS builds one from this regular work pattern.
-      { id: "jack", name: "Jack", colour: "#e7b54a", // Iron Man gold
+      { id: "jack", name: "Jack", colour: "#e7b54a", baseLevel: 31, // Iron Man gold
         work: { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:30",
                 note: "Usually in by 10–10:30 · sometimes works from home" } },
     ],
@@ -168,12 +168,14 @@ function defaultData() {
       lastTipRun: null,
     },
 
-    // Self-care XP — a companion to the wellbeing stats on the Health page.
-    // Additive only, same no-guilt rule as everything else: it only ever
-    // goes up. This is a deliberately different, confirmed decision from
-    // the chore-XP companion that was scrapped twice — this one tracks
-    // self-care, not housework.
-    selfCareXp: 0,
+    // XP — one pool per person, additive only (never goes down). Started as
+    // self-care-only on the Health page; now also earned from ticking
+    // cleaning/household chores, for BOTH of you — the level number starts
+    // at each person's baseLevel (see people[]) rather than 1, and climbs
+    // from there. Reintroducing chore-XP was a deliberate, confirmed call
+    // (it had been dropped twice before as a chores-only companion) — this
+    // time it's unified with the self-care system, not a standalone one.
+    xp: { kirsten: 0, jack: 0 },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
@@ -237,7 +239,11 @@ function normalize(db) {
   if (!db.waste || typeof db.waste !== "object") db.waste = d.waste;
   if (typeof db.waste.outsideBagsWaiting !== "number") db.waste.outsideBagsWaiting = 0;
   if (typeof db.waste.carCapacity !== "number") db.waste.carCapacity = 10;
-  if (typeof db.selfCareXp !== "number") db.selfCareXp = 0;
+  if (!db.xp || typeof db.xp !== "object") db.xp = { kirsten: 0, jack: 0 };
+  if (typeof db.selfCareXp === "number") { db.xp.kirsten = (db.xp.kirsten || 0) + db.selfCareXp; delete db.selfCareXp; }
+  if (typeof db.xp.kirsten !== "number") db.xp.kirsten = 0;
+  if (typeof db.xp.jack !== "number") db.xp.jack = 0;
+  db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 31; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {

@@ -140,11 +140,18 @@ function toggleDone(db, routineId, dateKey) {
   if (marking) {
     const r = db.routines.find((x) => x.id === routineId);
     if (r && r.repeat === "periodic" && r.rollOnTick) r.anchorDate = dateKey;
-    if (r && isSharedTask(r)) spawnFollowUp(db, r);
-    if (r) { const xp = selfCareXpForRoutine(r); if (xp) awardSelfCareXp(db, xp); }
+    if (r && isSharedTask(r)) {
+      spawnFollowUp(db, r);
+      awardXp(db, db.activePerson, choreXpForRoutine(r)); // whoever actually ticked it
+    }
+    if (r) { const xp = selfCareXpForRoutine(r); if (xp) awardXp(db, db.activePerson, xp); }
   }
   saveDB(db);
 }
+
+/* Chore XP — a bigger one-off (declutter/deep-clean) job earns more than a
+   quick recurring tick, same split as the room time-estimate. */
+function choreXpForRoutine(r) { return r.repeat === "once" ? 10 : 5; }
 
 /* ---- Follow-up rules: completing certain jobs quietly creates the next
    one, so she doesn't have to remember to add it herself. A small named
@@ -793,25 +800,33 @@ function hygieneStat(db) {
 function healthStat(db) { return selfCareStatus(db, "meds").gauge; }
 function hydrationStat(db) { return pct(trackerFor(db, todayKey()).waterMl, db.goals.waterMl); }
 
-/* Self-care XP — additive only (see db.selfCareXp comment in storage.js).
-   Bath/hair are bigger acts of self-care than a quick daily tick, so they
-   earn more. */
+/* Self-care XP — additive only. Bath/hair are bigger acts of self-care
+   than a quick daily tick, so they earn more. */
 function selfCareXpForRoutine(r) {
   if (SELF_CARE.hair.titles.includes(r.title) || SELF_CARE.bath.titles.includes(r.title)) return 15;
   if (SELF_CARE.teeth.titles.includes(r.title) || SELF_CARE.meds.titles.includes(r.title)) return 5;
   return 0;
 }
-function awardSelfCareXp(db, n) { db.selfCareXp = (db.selfCareXp || 0) + n; }
 
-const SELF_CARE_XP_PER_LEVEL = 150;
-function selfCareLevel(db) {
-  const xp = db.selfCareXp || 0;
-  return { level: Math.floor(xp / SELF_CARE_XP_PER_LEVEL) + 1, into: xp % SELF_CARE_XP_PER_LEVEL, span: SELF_CARE_XP_PER_LEVEL, xp };
+/* XP — one additive-only pool per person (see db.xp comment in
+   storage.js). Level starts at that person's baseLevel (their age, by her
+   choice) rather than 1, and climbs from real XP earned — self-care ticks
+   for Kirsten, chore ticks for either of you. */
+function awardXp(db, personId, n) {
+  if (!n) return;
+  db.xp[personId] = (db.xp[personId] || 0) + n;
+}
+
+const XP_PER_LEVEL = 150;
+function personLevel(db, personId) {
+  const xp = db.xp[personId] || 0;
+  const base = (personById(db, personId) || {}).baseLevel || 1;
+  return { level: base + Math.floor(xp / XP_PER_LEVEL), into: xp % XP_PER_LEVEL, span: XP_PER_LEVEL, xp };
 }
 
 /* ---- Character panel: portrait + icon ring + gauges ---- */
 function characterPanelHTML(db) {
-  const lvl = selfCareLevel(db);
+  const lvl = personLevel(db, "kirsten");
   const pctLvl = Math.round((lvl.into / lvl.span) * 100);
 
   const iconBtn = (key) => {
@@ -863,6 +878,33 @@ function characterPanelHTML(db) {
         ${statBar("Hydration", hydrationStat(db))}
       </div>
     </div>`;
+}
+
+/* ---- Level strip: shown to BOTH of you at the top of Cleaning, quiet and
+   compact on purpose (no icon ring, no gauges) — Jack's side of the app
+   has deliberately stayed low-key everywhere else, so this only adds the
+   one thing asked for: seeing your own level rise as chores get done. ---- */
+function levelStripHTML(db, personId) {
+  const person = personById(db, personId);
+  if (!person) return "";
+  const lvl = personLevel(db, personId);
+  const pctLvl = Math.round((lvl.into / lvl.span) * 100);
+  return `
+    <div class="level-strip">
+      <div class="level-strip__avatar">
+        <img src="img/people/${personId}.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+        <div class="level-strip__fallback" hidden>${escapeHTML((person.name || "?")[0])}</div>
+      </div>
+      <div class="level-strip__main">
+        <div class="level-strip__row"><span>${escapeHTML(person.name)} · Level ${lvl.level}</span><span>${lvl.into} / ${lvl.span} XP</span></div>
+        <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
+      </div>
+    </div>`;
+}
+function renderCleaningLevel(db) {
+  const wrap = document.getElementById("cleaningLevel");
+  if (!wrap) return;
+  wrap.innerHTML = levelStripHTML(db, db.activePerson);
 }
 
 function renderCharacterPanel(db) {

@@ -134,6 +134,7 @@ function render() {
   // The other pages
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
+  renderCleaningLevel(DB);   // Level strip (both of you)
   renderCleaningHouse(DB);   // Focus Mode / house blueprint (Kirsten only)
   renderLaundryWaste(DB);    // Laundry & waste ops panel (Kirsten only)
   renderCleaning(DB);        // Cleaning
