@@ -179,6 +179,11 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .nav-tile__icon { font-size: 1.5rem; }
 .nav-tile__label { font-weight: 650; margin-top: 4px; }
 .nav-tile__sub { font-size: .78rem; color: var(--muted); }
+.nav-tile.is-done { border-color: var(--accent); background: var(--accent-soft); }
+.nav-tile.is-done .nav-tile__sub { color: var(--accent); }
+
+/* ---------- Small hand-rolled graphs (Fitness page) ---------- */
+.mini-graph { width: 100%; height: auto; display: block; margin: 8px 0; }
 
 /* ---------- Household line on Home + More menu ---------- */
 .household-line {

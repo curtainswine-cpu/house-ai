@@ -143,6 +143,10 @@ function render() {
   renderShopping(DB);        // Shopping (sticky notes)
   renderFood(DB);            // Food
   renderTodayHealth(DB);     // Health
+  renderFitnessPage(DB);     // Health → Fitness
+  renderStatHealthPage(DB);      // Home hero → Health
+  renderStatHygienePage(DB);     // Home hero → Hygiene
+  renderStatAppearancePage(DB);  // Home hero → Appearance
   renderRoutinesView(DB);    // Manage → routines
   renderProjectsManager(DB); // Manage → projects
   renderMoneyView(DB);       // More → Money
@@ -227,35 +231,6 @@ function openRoomModal(roomId) {
   };
 }
 
-/* ---------- Stat group tap (Home hero: Health / Hygiene / Appearance) ---------- */
-function openStatGroupModal(groupKey) {
-  const g = STAT_GROUPS[groupKey];
-  if (!g) return;
-  const dateKey = todayKey();
-
-  let body = "";
-  if (g.includeHydration) {
-    const t = trackerFor(DB, todayKey());
-    body += `
-      <div class="field">
-        <label>💧 Hydration — ${litres(t.waterMl)} / ${litres(DB.goals.waterMl)} L</label>
-        <div class="chip-row">
-          <button class="chip" data-water="${DB.goals.glassMl}">+ ${DB.goals.glassMl} ml</button>
-          <button class="chip" data-water-add>a specific amount…</button>
-        </div>
-      </div>`;
-  }
-  g.items.forEach((key) => {
-    const cfg = SELF_CARE[key];
-    const routines = selfCareRoutines(DB, key).sort(byTime);
-    if (!routines.length) return;
-    body += `<div class="time-group">${cfg.icon} ${cfg.label} — ${daysAgoLabel(selfCareStatus(DB, key).last)}</div>` +
-      routines.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("");
-  });
-  if (!body) body = `<p style="color:var(--muted);font-size:.88rem;margin:0">Nothing set up for this yet.</p>`;
-
-  openModal(`${g.icon} ${g.label}`, body);
-}
 
 /* ---------- Add / edit routine ----------
    existing = routine to edit; presetArea = "me"|"cleaning"|"household";
@@ -647,9 +622,13 @@ function wireEvents() {
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
 
-    // Home: tap a Health/Hygiene/Appearance bar to see/tick its jobs
-    const statGroup = e.target.closest("[data-statgroup]");
-    if (statGroup) { openStatGroupModal(statGroup.dataset.statgroup); return; }
+    // Hygiene/Appearance stat pages: tap a tile to tick the next job in it
+    const catTick = e.target.closest("[data-cat-tick]");
+    if (catTick) { tickNextInCategory(DB, catTick.dataset.catTick); render(); return; }
+
+    // Health stat page: medication (bulk-ticks everything due today) + a quick water add
+    if (e.target.closest("[data-meds-tick]")) { toggleMedsToday(DB); render(); return; }
+    if (e.target.closest("[data-quick-water]")) { addWater(DB, DB.goals.glassMl); render(); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

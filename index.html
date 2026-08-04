@@ -121,9 +121,49 @@
         <h2>Health</h2>
         <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
+      <div class="nav-grid" style="margin-bottom:14px">
+        <button class="nav-tile" data-goto="fitness">
+          <span class="nav-tile__icon">📈</span>
+          <span class="nav-tile__label">Fitness</span>
+          <span class="nav-tile__sub">weight · steps</span>
+        </button>
+      </div>
       <div id="todayHealth"></div>
-      <div id="weightLog"></div>
       <div id="workoutCard"></div>
+    </section>
+
+    <!-- ---- FITNESS: weight trend, steps, tips ---- -->
+    <section id="view-fitness" class="view" data-view="fitness" hidden>
+      <div class="view__head">
+        <h2>📈 Fitness</h2>
+        <button class="btn btn--mini" data-goto="health">‹ Health</button>
+      </div>
+      <div id="fitnessBody"></div>
+    </section>
+
+    <!-- ---- HOME HERO STAT PAGES: Health / Hygiene / Appearance ---- -->
+    <section id="view-stat-health" class="view" data-view="stat-health" hidden>
+      <div class="view__head">
+        <h2>❤️ Health</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
+      </div>
+      <div id="statHealthBody" class="nav-grid"></div>
+    </section>
+
+    <section id="view-stat-hygiene" class="view" data-view="stat-hygiene" hidden>
+      <div class="view__head">
+        <h2>🧼 Hygiene</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
+      </div>
+      <div id="statHygieneBody" class="nav-grid"></div>
+    </section>
+
+    <section id="view-stat-appearance" class="view" data-view="stat-appearance" hidden>
+      <div class="view__head">
+        <h2>💄 Appearance</h2>
+        <button class="btn btn--mini" data-goto="today">‹ Home</button>
+      </div>
+      <div id="statAppearanceBody" class="nav-grid"></div>
     </section>
 
     <!-- ---- MANAGE: routines + projects ---- -->

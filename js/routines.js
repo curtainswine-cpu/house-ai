@@ -826,6 +826,94 @@ function statGroupDue(db, groupKey) {
   return itemDue || hydrationDue;
 }
 
+/* ---- Medication: one tick for everything due today. All her supplements
+   and meds live in a single self-filled dosette compartment per day, so
+   the real-world action is one tick, not four separate ones — the
+   underlying routines (different cadences: daily / every-other-day /
+   Saturdays-only) still exist individually for the refill checklist and
+   Mini missions, this just bulk-actions whichever of them are due today. */
+function medsTakenToday(db) {
+  const due = selfCareRoutines(db, "meds").filter((r) => isDueOn(db, r, new Date()));
+  return { due, allDone: due.length > 0 && due.every((r) => isDone(db, r.id, todayKey())) };
+}
+function toggleMedsToday(db) {
+  const { due, allDone } = medsTakenToday(db);
+  const dateKey = todayKey();
+  due.forEach((r) => {
+    const isDoneNow = isDone(db, r.id, dateKey);
+    if (allDone === isDoneNow) toggleDone(db, r.id, dateKey); // mark all done, or undo all if already all done
+  });
+}
+
+/* ---- Hygiene/Appearance: tap ticks the next undone item in that
+   category; once everything's done, tapping again undoes the most
+   recent one (a quick way back if it was a mis-tap). Works the same for
+   single-routine categories (bath, skin oil…) and multi-routine ones
+   (teeth: AM then PM). */
+function tickNextInCategory(db, key) {
+  const routines = selfCareRoutines(db, key).sort(byTime);
+  const dateKey = todayKey();
+  const undone = routines.filter((r) => !isDone(db, r.id, dateKey));
+  if (undone.length) { toggleDone(db, undone[0].id, dateKey); return; }
+  if (routines.length) toggleDone(db, routines[routines.length - 1].id, dateKey);
+}
+
+/* ---- Stat detail pages (real views now, not modals) ---- */
+function categoryTileHTML(db, key) {
+  const cfg = SELF_CARE[key];
+  const routines = selfCareRoutines(db, key);
+  const dateKey = todayKey();
+  const allDone = routines.length > 0 && routines.every((r) => isDone(db, r.id, dateKey));
+  const status = selfCareStatus(db, key);
+  const sub = allDone ? "done today ✓" : (status.last ? daysAgoLabel(status.last) : "not logged yet");
+  return `
+    <button class="nav-tile ${allDone ? "is-done" : ""}" data-cat-tick="${key}">
+      <span class="nav-tile__icon">${cfg.icon}</span>
+      <span class="nav-tile__label">${cfg.label}</span>
+      <span class="nav-tile__sub">${sub}</span>
+    </button>`;
+}
+
+function renderStatHealthPage(db) {
+  const wrap = document.getElementById("statHealthBody");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  const t = trackerFor(db, todayKey());
+  const hydrationDone = t.waterMl >= db.goals.waterMl;
+  const meds = medsTakenToday(db);
+  const refill = db.routines.find((r) => r.title === "Refill meds pot (3 weeks)");
+  const refillDue = refill && isDueOn(db, refill, new Date()) && !isDone(db, refill.id, todayKey());
+
+  wrap.innerHTML = `
+    <button class="nav-tile ${hydrationDone ? "is-done" : ""}" data-quick-water>
+      <span class="nav-tile__icon">💧</span>
+      <span class="nav-tile__label">Hydration</span>
+      <span class="nav-tile__sub">${litres(t.waterMl)} / ${litres(db.goals.waterMl)} L</span>
+    </button>
+    <button class="nav-tile ${meds.allDone ? "is-done" : ""}" data-meds-tick>
+      <span class="nav-tile__icon">💊</span>
+      <span class="nav-tile__label">Medication</span>
+      <span class="nav-tile__sub">${meds.allDone ? "taken today ✓" : meds.due.length ? `${meds.due.length} due today` : "nothing due today"}</span>
+    </button>
+    ${refillDue ? `<p class="view__sub" style="grid-column:1/-1;margin:4px 0 0">💊 Your meds dosette is due a refill — see "Refill meds pot" in Mini missions.</p>` : ""}
+    <button class="btn btn--ghost btn--block" data-water-add style="grid-column:1/-1">Add a specific water amount…</button>
+  `;
+}
+
+function renderStatHygienePage(db) {
+  const wrap = document.getElementById("statHygieneBody");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = STAT_GROUPS.hygiene.items.map((k) => categoryTileHTML(db, k)).join("");
+}
+
+function renderStatAppearancePage(db) {
+  const wrap = document.getElementById("statAppearanceBody");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = STAT_GROUPS.appearance.items.map((k) => categoryTileHTML(db, k)).join("");
+}
+
 /* Self-care XP — additive only. Bath/hair are bigger acts of self-care
    than a quick daily tick, so they earn more. */
 function selfCareXpForRoutine(r) {
@@ -893,7 +981,7 @@ function characterPanelHTML(db) {
     const g = STAT_GROUPS[key];
     const val = statGroupGauge(db, key);
     return `
-      <button class="hero-stat" data-statgroup="${key}">
+      <button class="hero-stat" data-goto="stat-${key}">
         <div class="hero-stat__row">
           <span>${g.icon} ${g.label}</span>
           <span>${statGroupDue(db, key) ? `<span class="hero-stat__due"></span>` : ""}${val}%</span>
