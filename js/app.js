@@ -66,7 +66,9 @@ function renderHomeNav(db) {
 
   const isKirsten = db.activePerson === "kirsten";
   const tiles = [
-    { view: "calendar", icon: "📅", label: "Calendar", sub: "everything ahead" },
+    // Both of you reach the calendar via your own hero's schedule line
+    // now — a tile to the same page would just be the same duplication
+    // already fixed for Health/Cleaning/Pets.
     { view: "tasks", icon: "📋", label: isKirsten ? TASKS_NAME : "My tasks", sub: prog.total ? `${prog.done}/${prog.total} today` : "all clear" },
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },

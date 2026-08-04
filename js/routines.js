@@ -173,10 +173,18 @@ function isSharedTask(r) { return r.area === "cleaning" || r.area === "household
 function routinesForToday(db, date) {
   return db.routines.filter((r) => isDueOn(db, r, date)).sort(byTime);
 }
-/* MY personal tasks due today (Home screen) — yours + shown to you only. */
+/* True for anything already tracked on the Health/Hygiene/Appearance bar
+   pages (teeth, meds, bath, skin oil…) — kept out of Mini missions so it
+   isn't a job in two places at once; tick it from its bar page instead. */
+function isSelfCareRoutine(r) {
+  return Object.values(SELF_CARE).some((cfg) => cfg.titles.includes(r.title));
+}
+
+/* MY personal tasks due today (Home screen) — yours + shown to you only,
+   minus anything already covered by a bar-tracked group. */
 function personalTasksToday(db, date) {
   return db.routines
-    .filter((r) => isPersonalFor(r, db.activePerson) && isDueOn(db, r, date))
+    .filter((r) => isPersonalFor(r, db.activePerson) && isDueOn(db, r, date) && !isSelfCareRoutine(r))
     .sort(byTime);
 }
 /* Shared household chores due today (cleaning + household), for both of you. */
@@ -1106,7 +1114,16 @@ function houseCleanPct(db) {
 /* One-line "what's next today" for the hero panel — the full schedule
    card further down the page still has the whole list; this is just
    enough to glance at without leaving Home. */
-function heroScheduleSummary(db) {
+function heroScheduleSummary(db, personId) {
+  const person = personById(db, personId);
+  // Jack has no personal calendar — his schedule comes from his work
+  // pattern instead (same source as his own "Today's schedule" card).
+  if (person && person.work) {
+    if (typeof generateWorkEvents !== "function") return "📅 Today's plan";
+    const events = eventsForDay(generateWorkEvents(db, person, 1), todayKey());
+    if (!events.length) return "📅 Not a work day today";
+    return `📅 ${eventTime(events[0])} ${escapeHTML(events[0].summary)}`;
+  }
   if (typeof calendarConfigured !== "function" || !calendarConfigured(db)) return "📅 Connect your calendar to see today's plan";
   const today = eventsForDay(db.calendar.lastEvents || [], todayKey());
   if (!today.length) return "📅 Nothing on today";
@@ -1173,7 +1190,7 @@ function characterPanelHTML(db, personId) {
           <div class="hero-char__fallback" hidden>${escapeHTML((person.name || "?")[0])}</div>
         </div>
         <div class="hero-char__level">
-          ${isKirsten ? `<div class="hero-char__schedule">${heroScheduleSummary(db)}</div>` : ""}
+          <button class="hero-char__schedule" data-goto="calendar">${heroScheduleSummary(db, personId)}</button>
           <div class="hero-char__level-row">${escapeHTML(person.name)}${ageFromBirthdate(person.birthdate) != null ? ` · ${ageFromBirthdate(person.birthdate)}` : ""} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
