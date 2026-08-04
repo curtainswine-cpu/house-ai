@@ -140,6 +140,7 @@ function render() {
   renderJackLoad(DB);        // Jack's task load panel (Kirsten's cleaning view)
   renderShopping(DB);        // Shopping (sticky notes)
   renderFood(DB);            // Food
+  renderCharacterPanel(DB);  // Health: self-care character panel (Kirsten only)
   renderTodayHealth(DB);     // Health
   renderRoutinesView(DB);    // Manage → routines
   renderProjectsManager(DB); // Manage → projects
@@ -223,6 +224,22 @@ function openRoomModal(roomId) {
     room.notes = document.getElementById("roomNotes").value;
     saveDB(DB);
   };
+}
+
+/* ---------- Self-care icon tap (Health page character panel) ---------- */
+function openSelfCareModal(key) {
+  const cfg = SELF_CARE[key];
+  if (!cfg) return;
+  const dateKey = todayKey();
+  const routines = selfCareRoutines(DB, key).sort(byTime);
+  const listHTML = routines.length
+    ? routines.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("")
+    : `<p style="color:var(--muted);font-size:.88rem;margin:0">Nothing set up for this yet.</p>`;
+  const status = selfCareStatus(DB, key);
+  openModal(`${cfg.icon} ${cfg.label}`, `
+    <p style="margin:0 0 10px;color:var(--muted);font-size:.85rem">Last done: ${status.last ? daysAgoLabel(status.last) : "not logged yet"}</p>
+    ${listHTML}
+  `);
 }
 
 /* ---------- Add / edit routine ----------
@@ -614,6 +631,10 @@ function wireEvents() {
 
     // Steps: open the quick update
     if (e.target.closest("[data-steps-edit]")) { openStepsModal(); return; }
+
+    // Health: tap a self-care icon to see/tick its jobs
+    const selfCareIcon = e.target.closest("[data-selfcare]");
+    if (selfCareIcon) { openSelfCareModal(selfCareIcon.dataset.selfcare); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

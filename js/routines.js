@@ -141,6 +141,7 @@ function toggleDone(db, routineId, dateKey) {
     const r = db.routines.find((x) => x.id === routineId);
     if (r && r.repeat === "periodic" && r.rollOnTick) r.anchorDate = dateKey;
     if (r && isSharedTask(r)) spawnFollowUp(db, r);
+    if (r) { const xp = selfCareXpForRoutine(r); if (xp) awardSelfCareXp(db, xp); }
   }
   saveDB(db);
 }
@@ -729,6 +730,146 @@ function renderLaundryWaste(db) {
   if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
   ensureDailyWearLaundry(db);
   wrap.innerHTML = laundryWastePanelHTML(db);
+}
+
+/* ============================================================
+   Self-care character panel (Health page, Kirsten only) — a portrait +
+   icon ring + gentle wellbeing gauges. Gauges are computed live from real
+   completion history rather than a separate stored value that ticks up
+   or down on its own — a decaying stored stat is exactly the shape of bug
+   that already bit the periodic-routine rewrite once, and it would mean
+   two sources of truth for "did I do this" drifting apart. Only stats
+   with a real signal behind them are shown (Hygiene/Health/Hydration) —
+   Energy/Mood/Focus aren't backed by any data the app actually has, and
+   a made-up number would be worse than no number.
+   ============================================================ */
+const SELF_CARE = {
+  teeth: { icon: "🦷", label: "Teeth", titles: ["Brush teeth"], cycleDays: 2, dailyDue: true },
+  meds:  { icon: "💊", label: "Meds",  titles: ["Morning meds + vitamins", "Biotin supplement (every other day)", "Magnesium supplement (every other day)", "Iron supplement"], cycleDays: 2, dailyDue: true },
+  hair:  { icon: "💇", label: "Hair",  titles: ["Wash hair"], cycleDays: 10, dailyDue: false },
+  bath:  { icon: "🛁", label: "Bath",  titles: ["Bath/shower"], cycleDays: 6, dailyDue: false },
+};
+
+function selfCareRoutines(db, key) {
+  const titles = SELF_CARE[key].titles;
+  return db.routines.filter((r) => titles.includes(r.title));
+}
+
+/* Most recent completion date across a set of routine ids, or null. */
+function lastCompletedDate(db, routineIds) {
+  let latest = null;
+  Object.keys(db.completions).forEach((k) => {
+    const sep = k.lastIndexOf("|");
+    const rid = k.slice(0, sep), dateKey = k.slice(sep + 1);
+    if (routineIds.includes(rid) && (!latest || dateKey > latest)) latest = dateKey;
+  });
+  return latest;
+}
+
+/* A calm 40–100 gauge that eases off the more days pass since it was last
+   done — never all the way to zero (nothing here should ever read as
+   "failing"), and starts at a neutral middle rather than empty if it's
+   never been logged at all. */
+function recencyGauge(lastDateKey, cycleDays) {
+  if (!lastDateKey) return 55;
+  const days = daysBetween(new Date(lastDateKey + "T00:00:00"), new Date());
+  const frac = Math.max(0, 1 - days / cycleDays);
+  return Math.round(40 + frac * 60);
+}
+
+function selfCareStatus(db, key) {
+  const cfg = SELF_CARE[key];
+  const routines = selfCareRoutines(db, key);
+  const last = lastCompletedDate(db, routines.map((r) => r.id));
+  const dateKey = todayKey();
+  const due = cfg.dailyDue && routines.some((r) => isDueOn(db, r, new Date()) && !isDone(db, r.id, dateKey));
+  return { last, gauge: recencyGauge(last, cfg.cycleDays), due, routines };
+}
+
+function hygieneStat(db) {
+  const t = selfCareStatus(db, "teeth").gauge, h = selfCareStatus(db, "hair").gauge, b = selfCareStatus(db, "bath").gauge;
+  return Math.round((t + h + b) / 3);
+}
+function healthStat(db) { return selfCareStatus(db, "meds").gauge; }
+function hydrationStat(db) { return pct(trackerFor(db, todayKey()).waterMl, db.goals.waterMl); }
+
+/* Self-care XP — additive only (see db.selfCareXp comment in storage.js).
+   Bath/hair are bigger acts of self-care than a quick daily tick, so they
+   earn more. */
+function selfCareXpForRoutine(r) {
+  if (SELF_CARE.hair.titles.includes(r.title) || SELF_CARE.bath.titles.includes(r.title)) return 15;
+  if (SELF_CARE.teeth.titles.includes(r.title) || SELF_CARE.meds.titles.includes(r.title)) return 5;
+  return 0;
+}
+function awardSelfCareXp(db, n) { db.selfCareXp = (db.selfCareXp || 0) + n; }
+
+const SELF_CARE_XP_PER_LEVEL = 150;
+function selfCareLevel(db) {
+  const xp = db.selfCareXp || 0;
+  return { level: Math.floor(xp / SELF_CARE_XP_PER_LEVEL) + 1, into: xp % SELF_CARE_XP_PER_LEVEL, span: SELF_CARE_XP_PER_LEVEL, xp };
+}
+
+/* ---- Character panel: portrait + icon ring + gauges ---- */
+function characterPanelHTML(db) {
+  const lvl = selfCareLevel(db);
+  const pctLvl = Math.round((lvl.into / lvl.span) * 100);
+
+  const iconBtn = (key) => {
+    const cfg = SELF_CARE[key];
+    const status = selfCareStatus(db, key);
+    const sub = status.last ? daysAgoLabel(status.last) : "not logged yet";
+    return `
+      <button class="cc-icon" data-selfcare="${key}" aria-label="${cfg.label}">
+        ${status.due ? `<span class="cc-icon__due"></span>` : ""}
+        <span class="cc-icon__glyph">${cfg.icon}</span>
+        <span class="cc-icon__label">${cfg.label}</span>
+        <span class="cc-icon__sub">${sub}</span>
+      </button>`;
+  };
+  const t = trackerFor(db, todayKey());
+  const hydrationBtn = `
+    <button class="cc-icon" data-water-add aria-label="Hydration">
+      ${t.waterMl < db.goals.waterMl ? `<span class="cc-icon__due"></span>` : ""}
+      <span class="cc-icon__glyph">💧</span>
+      <span class="cc-icon__label">Hydration</span>
+      <span class="cc-icon__sub">${litres(t.waterMl)} / ${litres(db.goals.waterMl)} L</span>
+    </button>`;
+
+  const statBar = (label, val) => `
+    <div class="cc-stat">
+      <div class="cc-stat__row"><span>${label}</span><span>${val}%</span></div>
+      <div class="bar"><div class="bar__fill" style="width:${val}%"></div></div>
+    </div>`;
+
+  return `
+    <div class="char-panel">
+      <div class="char-panel__top">
+        <div class="char-panel__portrait">
+          <img src="img/people/kirsten.png" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <div class="char-panel__fallback" hidden>K</div>
+        </div>
+        <div class="char-panel__level">
+          <div class="char-panel__level-row">Level ${lvl.level}</div>
+          <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
+          <div class="char-panel__level-sub">${lvl.into} / ${lvl.span} XP</div>
+        </div>
+      </div>
+      <div class="cc-icons">
+        ${iconBtn("teeth")}${iconBtn("meds")}${iconBtn("hair")}${iconBtn("bath")}${hydrationBtn}
+      </div>
+      <div class="cc-stats">
+        ${statBar("Hygiene", hygieneStat(db))}
+        ${statBar("Health", healthStat(db))}
+        ${statBar("Hydration", hydrationStat(db))}
+      </div>
+    </div>`;
+}
+
+function renderCharacterPanel(db) {
+  const wrap = document.getElementById("characterPanel");
+  if (!wrap) return;
+  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = characterPanelHTML(db);
 }
 
 /* Is it a work day? Reused to keep Focus Mode quiet on shift days. */

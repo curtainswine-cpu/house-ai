@@ -168,6 +168,13 @@ function defaultData() {
       lastTipRun: null,
     },
 
+    // Self-care XP — a companion to the wellbeing stats on the Health page.
+    // Additive only, same no-guilt rule as everything else: it only ever
+    // goes up. This is a deliberately different, confirmed decision from
+    // the chore-XP companion that was scrapped twice — this one tracks
+    // self-care, not housework.
+    selfCareXp: 0,
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -230,6 +237,7 @@ function normalize(db) {
   if (!db.waste || typeof db.waste !== "object") db.waste = d.waste;
   if (typeof db.waste.outsideBagsWaiting !== "number") db.waste.outsideBagsWaiting = 0;
   if (typeof db.waste.carCapacity !== "number") db.waste.carCapacity = 10;
+  if (typeof db.selfCareXp !== "number") db.selfCareXp = 0;
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
   db.people.forEach((p) => {
@@ -696,6 +704,20 @@ function applySeedAdditions(db) {
     for (let i = 0; i < 4; i++) db.laundry.loads.push({ id: uid(), type: "Mixed wash", stage: "folded", createdDate: todayKey() });
 
     db.appliedSeeds.householdOps = true;
+  }
+
+  // ============================================================
+  // Self-care character panel (added August 2026) — the two personal-care
+  // routines the Health page's icon ring needs that didn't already exist.
+  // Deliberately no fixed day/cadence: shown as "days since last done"
+  // rather than a due-date, so there's nothing to be "behind" on.
+  // ============================================================
+  if (!db.appliedSeeds.selfCareRoutines) {
+    db.routines.push(
+      { id: uid(), title: "Wash hair", area: "me", assignedTo: "kirsten", timeOfDay: "anytime", repeat: "weekly", repeatDay: 0, steps: [] },
+      { id: uid(), title: "Bath/shower", area: "me", assignedTo: "kirsten", timeOfDay: "anytime", repeat: "weekly", repeatDay: 3, steps: [] },
+    );
+    db.appliedSeeds.selfCareRoutines = true;
   }
 }
 

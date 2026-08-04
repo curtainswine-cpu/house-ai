@@ -293,6 +293,40 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .bar__fill--gold { background: var(--gold); box-shadow: 0 0 8px var(--gold-soft); }
 .goal__actions { display: flex; gap: 8px; margin-top: 10px; }
 
+/* ---------- Self-care character panel (Health page) ---------- */
+.char-panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.char-panel__top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.char-panel__portrait {
+  flex: 0 0 auto; width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
+  border: 2px solid var(--accent); box-shadow: 0 0 12px var(--accent-glow); position: relative;
+}
+.char-panel__portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.char-panel__fallback {
+  width: 100%; height: 100%; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 1.6rem;
+}
+.char-panel__level { flex: 1; min-width: 0; }
+.char-panel__level-row { font-weight: 650; margin-bottom: 6px; }
+.char-panel__level-sub { font-size: .75rem; color: var(--muted); font-family: var(--mono); margin-top: 4px; }
+
+.cc-icons { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 14px; }
+.cc-icon {
+  flex: 0 0 auto; min-width: 76px; background: var(--surface-2); border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm); padding: 10px 8px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; color: var(--ink); position: relative; min-height: var(--tap);
+}
+.cc-icon:hover, .cc-icon:focus-visible { border-color: var(--accent); }
+.cc-icon__due { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+.cc-icon__glyph { font-size: 1.3rem; }
+.cc-icon__label { font-size: .75rem; font-weight: 650; }
+.cc-icon__sub { font-size: .66rem; color: var(--muted); font-family: var(--mono); }
+
+.cc-stats { display: flex; flex-direction: column; gap: 10px; }
+.cc-stat__row { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); margin-bottom: 5px; }
+
 .goal__hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
 
 /* ---------- Learn Punjabi ---------- */

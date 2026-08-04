@@ -13,7 +13,9 @@ function trackerFor(db, dateKey) {
 
 function addWater(db, ml) {
   const t = trackerFor(db, todayKey());
+  const wasZero = t.waterMl === 0;
   t.waterMl = Math.max(0, t.waterMl + ml);
+  if (wasZero && ml > 0) awardSelfCareXp(db, 5); // first drink logged today
   saveDB(db);
 }
 
