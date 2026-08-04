@@ -450,6 +450,39 @@ function applySeedAdditions(db) {
 
     db.appliedSeeds.cleaningGameRooms = true;
   }
+
+  // Complete the house layout with the floors she described (added August
+  // 2026) — shells only, no lastFullClean and no attached maintenance tasks
+  // yet. Deliberately NOT seeding the dog cage/coats/toilet
+  // seat/limescale/carpet/dusting tasks she mentioned in the same message —
+  // that's a lot to land on the Cleaning page at once, and she explicitly
+  // asked to be helped prioritise rather than shown everything simultaneously.
+  // These get added once she's confirmed what to tackle first.
+  if (!db.appliedSeeds.cleaningGameFloors) {
+    db.cleaningGame.rooms.push(
+      { id: uid(), name: "Bedroom", floor: "Third floor", icon: "🛏️", lastFullClean: null },
+      { id: uid(), name: "Bathroom", floor: "Third floor", icon: "🛁", lastFullClean: null },
+      { id: uid(), name: "Landing", floor: "Third floor", icon: "🪜", lastFullClean: null },
+      { id: uid(), name: "Loft", floor: "Top floor", icon: "📦", lastFullClean: null },
+    );
+    db.appliedSeeds.cleaningGameFloors = true;
+  }
+
+  // Storage bits for the bedroom/bathroom sort-out — added to her existing
+  // "Bits for the house" shopping note rather than a new list (added August
+  // 2026).
+  if (!db.appliedSeeds.storageShoppingItems) {
+    const list = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
+    if (list) {
+      list.items.push(
+        { id: uid(), text: "Large shoe tub — Kirsten's", done: false },
+        { id: uid(), text: "Large shoe tub — Jack's", done: false },
+        { id: uid(), text: "Under-bed storage sets — bedding", done: false },
+        { id: uid(), text: "Under-bed storage sets — towels", done: false },
+      );
+    }
+    db.appliedSeeds.storageShoppingItems = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */

@@ -22,7 +22,9 @@ async function syncCollectedMeals(db) {
     let added = 0, updated = 0;
     dishes.forEach((d) => {
       if (!d.id) return;
-      const qty = Math.max(1, Number(d.portions) || 1);
+      // The view's "portions" is the TOTAL batch Mum cooked — she keeps half
+      // of every dish, so only half actually lands in the freezer here.
+      const qty = Math.max(1, Math.round((Number(d.portions) || 2) / 2));
       const existing = db.food.items.find((i) => i.mealId === d.id);
       if (existing) {
         if (existing.qty !== qty) { existing.qty = qty; updated++; } // mum amended the portions

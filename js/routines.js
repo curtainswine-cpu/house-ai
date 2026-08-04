@@ -580,14 +580,13 @@ function renderCleaningCharacter(db) {
   if (isWorkDay) {
     note = "🏥 You're on shift today — nothing extra expected. The house can wait. 💙";
   } else {
-    // Gently point at whichever room has gone longest without a full clean.
-    const rooms = db.cleaningGame.rooms;
-    const oldest = rooms.length
-      ? rooms.reduce((a, b) => {
-          if (!a.lastFullClean) return a;
-          if (!b.lastFullClean) return b;
-          return a.lastFullClean < b.lastFullClean ? a : b;
-        })
+    // Gently point at whichever ESTABLISHED room (one that's actually been
+    // logged at least once) has gone longest without a full clean. A
+    // never-cleaned room isn't "overdue" — it just hasn't been started yet —
+    // so it's left out of this nudge rather than treated as the most urgent.
+    const logged = db.cleaningGame.rooms.filter((r) => r.lastFullClean);
+    const oldest = logged.length
+      ? logged.reduce((a, b) => (a.lastFullClean < b.lastFullClean ? a : b))
       : null;
     note = oldest
       ? `Whenever you fancy it — ${escapeHTML(oldest.name)} hasn't had a full clean in the longest (${daysAgoLabel(oldest.lastFullClean)}).`
