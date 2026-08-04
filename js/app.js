@@ -75,7 +75,6 @@ function renderHomeNav(db) {
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
     ...(isKirsten ? [
-      { view: "health", icon: "💗", label: "Health", sub: "water · steps · workout" },
       { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
     ] : []),
     { view: "manage", icon: "🔁", label: "Routines", sub: "manage" },
@@ -135,7 +134,6 @@ function render() {
   // The other pages
   renderTodayRoutines(DB);   // Mini missions: my personal tasks
   renderTodayProjects(DB);   // Mini missions: project next-steps
-  renderCleaningLevel(DB);   // Level strip (both of you)
   renderCleaningHouse(DB);   // Focus Mode / house blueprint (Kirsten only)
   renderLaundryWaste(DB);    // Laundry & waste ops panel (Kirsten only)
   renderCleaning(DB);        // Cleaning
@@ -626,9 +624,8 @@ function wireEvents() {
     const catTick = e.target.closest("[data-cat-tick]");
     if (catTick) { tickNextInCategory(DB, catTick.dataset.catTick); render(); return; }
 
-    // Health stat page: medication (bulk-ticks everything due today) + a quick water add
+    // Health stat page: medication (bulk-ticks everything due today)
     if (e.target.closest("[data-meds-tick]")) { toggleMedsToday(DB); render(); return; }
-    if (e.target.closest("[data-quick-water]")) { addWater(DB, DB.goals.glassMl); render(); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

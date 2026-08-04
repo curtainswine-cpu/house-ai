@@ -96,7 +96,6 @@
         <h2>Cleaning &amp; chores</h2>
         <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
-      <div id="cleaningLevel"></div>
       <div id="cleaningHouse"></div>
       <div id="laundryWaste"></div>
       <div id="jackLoad"></div>
@@ -115,39 +114,34 @@
       <div id="foodBody"></div>
     </section>
 
-    <!-- ---- HEALTH ---- -->
-    <section id="view-health" class="view" data-view="health" hidden>
+    <!-- ---- FITNESS: weight trend, steps, tips ---- -->
+    <section id="view-fitness" class="view" data-view="fitness" hidden>
       <div class="view__head">
-        <h2>Health</h2>
+        <h2>📈 Fitness</h2>
+        <button class="btn btn--mini" data-goto="stat-health">‹ Health</button>
+      </div>
+      <div id="fitnessBody"></div>
+    </section>
+
+    <!-- ---- HOME HERO STAT PAGES: Health / Hygiene / Appearance ----
+         Health is the single consolidated page — everything reachable
+         from the hero's Health bar lives here, nothing duplicated
+         elsewhere on Home. ---- -->
+    <section id="view-stat-health" class="view" data-view="stat-health" hidden>
+      <div class="view__head">
+        <h2>❤️ Health</h2>
         <button class="btn btn--mini" data-goto="today">‹ Home</button>
       </div>
-      <div class="nav-grid" style="margin-bottom:14px">
+      <div id="todayHealth"></div>
+      <div id="statHealthBody" class="nav-grid"></div>
+      <div class="nav-grid" style="margin-top:10px">
         <button class="nav-tile" data-goto="fitness">
           <span class="nav-tile__icon">📈</span>
           <span class="nav-tile__label">Fitness</span>
           <span class="nav-tile__sub">weight · steps</span>
         </button>
       </div>
-      <div id="todayHealth"></div>
       <div id="workoutCard"></div>
-    </section>
-
-    <!-- ---- FITNESS: weight trend, steps, tips ---- -->
-    <section id="view-fitness" class="view" data-view="fitness" hidden>
-      <div class="view__head">
-        <h2>📈 Fitness</h2>
-        <button class="btn btn--mini" data-goto="health">‹ Health</button>
-      </div>
-      <div id="fitnessBody"></div>
-    </section>
-
-    <!-- ---- HOME HERO STAT PAGES: Health / Hygiene / Appearance ---- -->
-    <section id="view-stat-health" class="view" data-view="stat-health" hidden>
-      <div class="view__head">
-        <h2>❤️ Health</h2>
-        <button class="btn btn--mini" data-goto="today">‹ Home</button>
-      </div>
-      <div id="statHealthBody" class="nav-grid"></div>
     </section>
 
     <section id="view-stat-hygiene" class="view" data-view="stat-hygiene" hidden>

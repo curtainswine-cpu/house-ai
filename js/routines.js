@@ -878,25 +878,17 @@ function renderStatHealthPage(db) {
   const wrap = document.getElementById("statHealthBody");
   if (!wrap) return;
   if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
-  const t = trackerFor(db, todayKey());
-  const hydrationDone = t.waterMl >= db.goals.waterMl;
   const meds = medsTakenToday(db);
   const refill = db.routines.find((r) => r.title === "Refill meds pot (3 weeks)");
   const refillDue = refill && isDueOn(db, refill, new Date()) && !isDone(db, refill.id, todayKey());
 
   wrap.innerHTML = `
-    <button class="nav-tile ${hydrationDone ? "is-done" : ""}" data-quick-water>
-      <span class="nav-tile__icon">💧</span>
-      <span class="nav-tile__label">Hydration</span>
-      <span class="nav-tile__sub">${litres(t.waterMl)} / ${litres(db.goals.waterMl)} L</span>
-    </button>
     <button class="nav-tile ${meds.allDone ? "is-done" : ""}" data-meds-tick>
       <span class="nav-tile__icon">💊</span>
       <span class="nav-tile__label">Medication</span>
       <span class="nav-tile__sub">${meds.allDone ? "taken today ✓" : meds.due.length ? `${meds.due.length} due today` : "nothing due today"}</span>
     </button>
     ${refillDue ? `<p class="view__sub" style="grid-column:1/-1;margin:4px 0 0">💊 Your meds dosette is due a refill — see "Refill meds pot" in Mini missions.</p>` : ""}
-    <button class="btn btn--ghost btn--block" data-water-add style="grid-column:1/-1">Add a specific water amount…</button>
   `;
 }
 
@@ -966,8 +958,17 @@ function heroScheduleSummary(db) {
   return `📅 ${eventTime(next)} ${escapeHTML(next.summary)}${more ? ` · +${more} more` : ""}`;
 }
 
-function characterPanelHTML(db) {
-  const lvl = personLevel(db, "kirsten");
+/* Same hero layout for both of you — portrait, name, level, house-cleaned
+   bar. The personal self-care bars (Health/Hygiene/Appearance) stay
+   Kirsten-only: there's no equivalent data for Jack (no meds/hygiene
+   routines tracked for him), and this is the "limited functionality"
+   version discussed for his side of the app — same design, smaller
+   surface, not a cut-down clone of hers. */
+function characterPanelHTML(db, personId) {
+  const person = personById(db, personId);
+  if (!person) return "";
+  const isKirsten = personId === "kirsten";
+  const lvl = personLevel(db, personId);
   const pctLvl = Math.round((lvl.into / lvl.span) * 100);
 
   const houseVal = houseCleanPct(db);
@@ -994,18 +995,18 @@ function characterPanelHTML(db) {
     <div class="hero-char">
       <div class="hero-char__top">
         <div class="hero-char__portrait">
-          <img src="img/people/kirsten-full.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
-          <div class="hero-char__fallback" hidden>K</div>
+          <img src="img/people/${personId}-full.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <div class="hero-char__fallback" hidden>${escapeHTML((person.name || "?")[0])}</div>
         </div>
         <div class="hero-char__level">
-          <div class="hero-char__schedule">${heroScheduleSummary(db)}</div>
-          <div class="hero-char__level-row">Level ${lvl.level}</div>
+          ${isKirsten ? `<div class="hero-char__schedule">${heroScheduleSummary(db)}</div>` : ""}
+          <div class="hero-char__level-row">${escapeHTML(person.name)} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
         </div>
       </div>
       <div class="hero-char__stats">
-        ${statBar("health")}${statBar("hygiene")}${statBar("appearance")}${houseBar}
+        ${isKirsten ? `${statBar("health")}${statBar("hygiene")}${statBar("appearance")}` : ""}${houseBar}
       </div>
     </div>`;
 }
@@ -1014,34 +1015,11 @@ function characterPanelHTML(db) {
    compact on purpose (no icon ring, no gauges) — Jack's side of the app
    has deliberately stayed low-key everywhere else, so this only adds the
    one thing asked for: seeing your own level rise as chores get done. ---- */
-function levelStripHTML(db, personId) {
-  const person = personById(db, personId);
-  if (!person) return "";
-  const lvl = personLevel(db, personId);
-  const pctLvl = Math.round((lvl.into / lvl.span) * 100);
-  return `
-    <div class="level-strip">
-      <div class="level-strip__avatar">
-        <img src="img/people/${personId}.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
-        <div class="level-strip__fallback" hidden>${escapeHTML((person.name || "?")[0])}</div>
-      </div>
-      <div class="level-strip__main">
-        <div class="level-strip__row"><span>${escapeHTML(person.name)} · Level ${lvl.level}</span><span>${lvl.into} / ${lvl.span} XP</span></div>
-        <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
-      </div>
-    </div>`;
-}
-function renderCleaningLevel(db) {
-  const wrap = document.getElementById("cleaningLevel");
-  if (!wrap) return;
-  wrap.innerHTML = levelStripHTML(db, db.activePerson);
-}
 
 function renderCharacterPanel(db) {
   const wrap = document.getElementById("homeCharacter");
   if (!wrap) return;
-  if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
-  wrap.innerHTML = characterPanelHTML(db);
+  wrap.innerHTML = characterPanelHTML(db, db.activePerson);
 }
 
 /* Is it a work day? Reused to keep Focus Mode quiet on shift days. */
