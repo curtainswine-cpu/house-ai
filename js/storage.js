@@ -94,11 +94,17 @@ function defaultData() {
     goals: { waterMl: 2000, glassMl: 250, steps: 8000 },
     trackers: {}, // key: "YYYY-MM-DD" -> { waterMl, steps }
 
-    // Gentle, guilt-free extras.
-    gym: {
-      perWeek: 2, sessions: [], // sessions = ["YYYY-MM-DD", ...]
-      place: "TruGym, Huddersfield",
-      hours: { weekday: "05:00–23:00", weekend: "06:00–22:00" }, // editable if they change
+    // Weight — fortnightly-minimum check-in, entirely manual (no scale
+    // she owns talks to a website — see the workout section below for why).
+    weight: {
+      entries: [], // { date: "YYYY-MM-DD", kg }
+    },
+
+    // 7-minute home workout — replaced the old gym-membership tracker
+    // (membership cancelled). Gentle, guilt-free: a suggested intensity
+    // for today, logged with one tap.
+    workout: {
+      sessions: [], // "YYYY-MM-DD" dates a workout was done
     },
     restDays: {},                      // "YYYY-MM-DD" -> true (a chosen do-nothing day)
     workOverrides: {},                 // "personId|YYYY-MM-DD" -> "wfh"
@@ -214,11 +220,11 @@ function normalize(db) {
   if (!db.restDays) db.restDays = {};
   if (!db.workOverrides) db.workOverrides = {};
   if (!db.liftRequests) db.liftRequests = {};
-  if (!db.gym || typeof db.gym !== "object") db.gym = d.gym;
-  if (db.gym.perWeek == null) db.gym.perWeek = d.gym.perWeek;
-  if (!Array.isArray(db.gym.sessions)) db.gym.sessions = [];
-  if (!db.gym.place) db.gym.place = d.gym.place;
-  if (!db.gym.hours) db.gym.hours = d.gym.hours;
+  delete db.gym; // membership cancelled — replaced by db.workout (7-minute home workout)
+  if (!db.weight || typeof db.weight !== "object") db.weight = d.weight;
+  if (!Array.isArray(db.weight.entries)) db.weight.entries = [];
+  if (!db.workout || typeof db.workout !== "object") db.workout = d.workout;
+  if (!Array.isArray(db.workout.sessions)) db.workout.sessions = [];
   db.goals = Object.assign({}, d.goals, db.goals || {});
   db.finance = Object.assign({}, d.finance, db.finance || {});
   db.calendar = Object.assign({}, d.calendar, db.calendar || {});
@@ -742,6 +748,14 @@ function applySeedAdditions(db) {
       { id: uid(), title: "Dye hair", area: "me", assignedTo: "kirsten", timeOfDay: "anytime", repeat: "periodic", intervalDays: 183, rollOnTick: true, anchorDate: todayKey(), steps: [] },
     );
     db.appliedSeeds.appearanceRoutines = true;
+  }
+
+  // Bathroom scales — needed for the new fortnightly weigh-in, doesn't
+  // exist in the house yet (added August 2026).
+  if (!db.appliedSeeds.scalesShoppingItem) {
+    const bits = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
+    if (bits) bits.items.push({ id: uid(), text: "Bathroom scales", done: false });
+    db.appliedSeeds.scalesShoppingItem = true;
   }
 }
 

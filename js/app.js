@@ -75,7 +75,7 @@ function renderHomeNav(db) {
     { view: "shopping", icon: "🗒️", label: "Shopping", sub: `${db.shopping.lists.length} list${db.shopping.lists.length === 1 ? "" : "s"}` },
     { view: "food", icon: "❄️", label: "Food", sub: soon ? `${soon} to use soon` : `${db.food.items.length} items` },
     ...(isKirsten ? [
-      { view: "health", icon: "💗", label: "Health", sub: "water · steps · gym" },
+      { view: "health", icon: "💗", label: "Health", sub: "water · steps · workout" },
       { view: "learn", icon: "📚", label: "Learn", sub: "Punjabi" },
     ] : []),
     { view: "manage", icon: "🔁", label: "Routines", sub: "manage" },
@@ -700,9 +700,24 @@ function wireEvents() {
       return;
     }
 
-    // Gym: log / undo a session
-    if (e.target.closest("[data-gym]")) { logGym(DB); render(); return; }
-    if (e.target.closest("[data-gym-undo]")) { undoGymToday(DB); render(); return; }
+    // Weight: log today's entry
+    const logWeightBtn = e.target.closest("[data-log-weight]");
+    if (logWeightBtn) {
+      const input = document.getElementById("weightInput");
+      if (input && input.value) { logWeight(DB, input.value); render(); }
+      return;
+    }
+
+    // Workout: expand exercise list (DOM-only, no re-render needed)
+    if (e.target.closest("[data-workout-toggle]")) {
+      const el = document.getElementById("workoutExercises");
+      const btn = e.target.closest("[data-workout-toggle]");
+      if (el) { el.hidden = !el.hidden; btn.textContent = el.hidden ? "▸ see exercises" : "▾ hide exercises"; }
+      return;
+    }
+    // Workout: log / undo today
+    if (e.target.closest("[data-workout-done]")) { logWorkout(DB); render(); return; }
+    if (e.target.closest("[data-workout-undo]")) { undoWorkoutToday(DB); render(); return; }
 
     // Rest day toggle
     if (e.target.closest("#restToggle")) { toggleRestDay(DB, todayKey()); render(); return; }

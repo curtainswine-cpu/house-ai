@@ -829,8 +829,10 @@ function statGroupDue(db, groupKey) {
 /* Self-care XP — additive only. Bath/hair are bigger acts of self-care
    than a quick daily tick, so they earn more. */
 function selfCareXpForRoutine(r) {
-  if (SELF_CARE.hair.titles.includes(r.title) || SELF_CARE.bath.titles.includes(r.title)) return 15;
-  if (SELF_CARE.teeth.titles.includes(r.title) || SELF_CARE.meds.titles.includes(r.title)) return 5;
+  const big = ["hairWash", "bath", "hairDye"];   // bigger acts of self-care/appearance
+  const small = ["teeth", "meds", "hairBrush", "skinOil", "shave", "lashesBrows"];
+  if (big.some((k) => SELF_CARE[k].titles.includes(r.title))) return 15;
+  if (small.some((k) => SELF_CARE[k].titles.includes(r.title))) return 5;
   return 0;
 }
 
