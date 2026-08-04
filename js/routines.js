@@ -768,15 +768,20 @@ const SELF_CARE = {
   hairDye:     { icon: "🎨", label: "Hair dye",       titles: ["Dye hair"], cycleDays: 183, dailyDue: false },
   shave:       { icon: "🪒", label: "Shave",          titles: ["Shave"], cycleDays: 9, dailyDue: false },
   lashesBrows: { icon: "💅", label: "Lashes/brows",   titles: ["Lash infill + brow wax/tint"], cycleDays: 23, dailyDue: false },
+  watch:       { icon: "⌚", label: "Watch",          titles: ["Put watch on (before work)", "Put watch on charge"], cycleDays: 2, dailyDue: true },
+  medsReorder: { icon: "📦", label: "Order meds",     titles: ["Order anxiety medication (repeat prescription)"], cycleDays: 21, dailyDue: true },
+  medsPot:     { icon: "💊", label: "Refill pot",     titles: ["Refill meds pot (3 weeks)"], cycleDays: 21, dailyDue: true },
+  mumsMeals:   { icon: "🍳", label: "Mum's meal planning", titles: ["Photograph a cookbook"], cycleDays: 30, dailyDue: true },
 };
 
 /* Home page groups this into three clickable stats — health (meds +
-   hydration), hygiene (washing/cleanliness), appearance (grooming/styling
-   that's more "how I present" than "am I clean"). */
+   hydration + meds logistics + meal planning), hygiene (washing/
+   cleanliness), appearance (grooming/styling — "how I present", which
+   turns out to include the watch, by her own call). */
 const STAT_GROUPS = {
-  health:     { icon: "❤️", label: "Health",     items: ["meds"], includeHydration: true },
+  health:     { icon: "❤️", label: "Health",     items: ["meds", "medsReorder", "medsPot", "mumsMeals"], includeHydration: true },
   hygiene:    { icon: "🧼", label: "Hygiene",    items: ["teeth", "bath", "hairWash", "hairBrush"] },
-  appearance: { icon: "💄", label: "Appearance", items: ["skinOil", "hairDye", "shave", "lashesBrows"] },
+  appearance: { icon: "💄", label: "Appearance", items: ["skinOil", "hairDye", "shave", "lashesBrows", "watch"] },
 };
 
 function selfCareRoutines(db, key) {
@@ -887,8 +892,6 @@ function renderStatHealthPage(db) {
   if (!wrap) return;
   if (db.activePerson !== "kirsten") { wrap.innerHTML = ""; return; }
   const meds = medsTakenToday(db);
-  const refill = db.routines.find((r) => r.title === "Refill meds pot (3 weeks)");
-  const refillDue = refill && isDueOn(db, refill, new Date()) && !isDone(db, refill.id, todayKey());
 
   wrap.innerHTML = `
     <button class="nav-tile ${meds.allDone ? "is-done" : ""}" data-meds-tick>
@@ -896,7 +899,9 @@ function renderStatHealthPage(db) {
       <span class="nav-tile__label">Medication</span>
       <span class="nav-tile__sub">${meds.allDone ? "taken today ✓" : meds.due.length ? `${meds.due.length} due today` : "nothing due today"}</span>
     </button>
-    ${refillDue ? `<p class="view__sub" style="grid-column:1/-1;margin:4px 0 0">💊 Your meds dosette is due a refill — see "Refill meds pot" in Mini missions.</p>` : ""}
+    ${categoryTileHTML(db, "medsPot")}
+    ${categoryTileHTML(db, "medsReorder")}
+    ${categoryTileHTML(db, "mumsMeals")}
   `;
 }
 
