@@ -1,11 +1,12 @@
 /* JARVIS service worker — makes the app open instantly and work offline.
    Bump CACHE whenever the app files change so phones pick up the update. */
-const CACHE = "jarvis-v44";
+const CACHE = "jarvis-v45";
 const ASSETS = [
   "./", "./index.html", "./styles.css", "./manifest.webmanifest",
   "./js/storage.js", "./js/routines.js", "./js/projects.js",
   "./js/trackers.js", "./js/finance.js", "./js/calendar.js", "./js/punjabi.js", "./js/food.js", "./js/shopping.js", "./js/app.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-180.png", "./icons/favicon.png",
+  "./img/people/kirsten.jpg", "./img/people/jack.jpg",
 ];
 
 self.addEventListener("install", (e) => {

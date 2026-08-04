@@ -845,7 +845,7 @@ function characterPanelHTML(db) {
     <div class="char-panel">
       <div class="char-panel__top">
         <div class="char-panel__portrait">
-          <img src="img/people/kirsten.png" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <img src="img/people/kirsten.jpg" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
           <div class="char-panel__fallback" hidden>K</div>
         </div>
         <div class="char-panel__level">
