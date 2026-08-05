@@ -1049,6 +1049,19 @@ function applySeedAdditions(db) {
     db.appliedSeeds.splitStairsByFlight = true;
   }
 
+  // Link Kirsten's corner to its shopping list by id (added August 2026) —
+  // the "Kirsten's corner redesign" list already existed but wasn't
+  // actually connected to the project, so the new project-detail view
+  // (measurements + shopping, opened by tapping the project itself) had
+  // nothing to show. Same field powers auto-creating a list for any other
+  // project the first time an item's added to it.
+  if (!db.appliedSeeds.projectShoppingLink) {
+    const corner = db.projects.find((p) => p.title === "Kirsten's corner");
+    const list = db.shopping.lists.find((l) => l.title === "Kirsten's corner redesign");
+    if (corner && list) corner.shoppingListId = list.id;
+    db.appliedSeeds.projectShoppingLink = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).

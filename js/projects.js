@@ -28,6 +28,38 @@ function completeNextStep(db, projectId) {
   saveDB(db);
 }
 
+/* Toggle any single step directly (the project detail view shows the whole
+   checklist, not just "next" — useful once she's actively working through
+   several steps out of order, e.g. measuring more than one unit in a row). */
+function toggleProjectStep(db, projectId, index) {
+  const p = db.projects.find((x) => x.id === projectId);
+  if (!p || !p.steps[index]) return;
+  p.steps[index].done = !p.steps[index].done;
+  saveDB(db);
+}
+
+/* First item added to a project's shopping section creates a list named
+   after the project and links it — she never has to manually create/link
+   one herself. */
+function projectShoppingList(db, projectId) {
+  const p = db.projects.find((x) => x.id === projectId);
+  if (!p) return null;
+  if (p.shoppingListId) return db.shopping.lists.find((l) => l.id === p.shoppingListId) || null;
+  return null;
+}
+function addProjectShoppingItem(db, projectId, text) {
+  const p = db.projects.find((x) => x.id === projectId);
+  if (!p || !text) return;
+  let list = p.shoppingListId ? db.shopping.lists.find((l) => l.id === p.shoppingListId) : null;
+  if (!list) {
+    list = { id: uid(), title: p.title, colour: NOTE_COLOURS[db.shopping.lists.length % NOTE_COLOURS.length], items: [] };
+    db.shopping.lists.push(list);
+    p.shoppingListId = list.id;
+  }
+  list.items.push({ id: uid(), text, done: false });
+  saveDB(db);
+}
+
 /* Create / update / delete whole projects. */
 function createProject(db, { emoji, title, stepTitles, room }) {
   db.projects.push({
@@ -69,7 +101,7 @@ function renderProjectsManager(db) {
     const prog = projectProgress(p);
     const done = isProjectComplete(p);
     return `
-      <article class="card">
+      <article class="card" data-open-project="${p.id}" style="cursor:pointer">
         <div class="card__main">
           <div class="card__title">${p.emoji || "📋"} ${escapeHTML(p.title)}</div>
           <div class="card__meta">

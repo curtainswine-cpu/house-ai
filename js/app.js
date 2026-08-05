@@ -214,7 +214,7 @@ function openRoomModal(roomId) {
     const prog = projectProgress(p);
     const done = isProjectComplete(p);
     return `
-      <article class="card">
+      <article class="card" data-open-project="${p.id}" style="cursor:pointer">
         <div class="card__main">
           <div class="card__title">${p.emoji || "📋"} ${escapeHTML(p.title)}</div>
           <div class="card__meta">
@@ -464,6 +464,84 @@ function openProjectModal(existing, presetRoom) {
   if (isEdit) {
     document.getElementById("pDelete").onclick = () => { deleteProject(DB, p.id); closeModal(); render(); };
   }
+}
+
+/* ---------- Project detail — the main way to actually work a project:
+   tick any step (not just "next"), jot measurements, and keep a shopping
+   list attached without leaving the project. Re-renders itself in place
+   after each action rather than closing, same idea as the room modal. ---- */
+function openProjectDetailModal(projectId) {
+  const p = DB.projects.find((x) => x.id === projectId);
+  if (!p) return;
+
+  const stepsHTML = p.steps.map((s, i) => `
+    <li class="${s.done ? "is-done" : ""}">
+      <button class="check" data-proj-step="${p.id}|${i}" aria-label="Toggle done">${s.done ? "✓" : ""}</button>
+      <span>${escapeHTML(s.title)}</span>
+    </li>`).join("");
+
+  const list = projectShoppingList(DB, p.id);
+  const shopItemsHTML = list ? (list.items || []).map((it) => `
+    <li class="${it.done ? "is-done" : ""}">
+      <button class="note__check" data-proj-toggle-item="${list.id}|${it.id}" aria-label="Tick">${it.done ? "✓" : ""}</button>
+      <span class="note__itemtext" data-proj-toggle-item="${list.id}|${it.id}">${escapeHTML(it.text)}</span>
+      <button class="note__x" data-proj-del-item="${list.id}|${it.id}" aria-label="Remove">✕</button>
+    </li>`).join("") : "";
+
+  openModal(`${p.emoji || "📋"} ${p.title}`, `
+    <ul class="project__steps" style="margin:0 0 14px">${stepsHTML}</ul>
+
+    <div class="field">
+      <label for="projMeasurements">📏 Measurements</label>
+      <textarea id="projMeasurements" rows="3" placeholder="e.g. Under-table unit — L90 x W40 x D30cm">${escapeHTML(p.measurements || "")}</textarea>
+    </div>
+
+    <div class="field" style="margin-top:14px">
+      <label>🛒 Shopping list${list ? ` — ${escapeHTML(list.title)}` : ""}</label>
+      <ul class="note__items">${shopItemsHTML}</ul>
+      <div class="note__add">
+        <input id="projAddItem" placeholder="add item…" />
+        <button class="note__addbtn" id="projAddItemBtn" aria-label="Add">+</button>
+      </div>
+    </div>
+
+    <button class="link-btn" style="margin-top:14px" data-edit-project="${p.id}">✎ Edit title/steps</button>
+  `);
+
+  document.getElementById("projMeasurements").onblur = () => {
+    p.measurements = document.getElementById("projMeasurements").value;
+    saveDB(DB);
+  };
+  document.querySelectorAll("[data-proj-step]").forEach((btn) => {
+    btn.onclick = () => {
+      const [pid, idx] = btn.dataset.projStep.split("|");
+      toggleProjectStep(DB, pid, Number(idx));
+      openProjectDetailModal(pid);
+    };
+  });
+  const addItem = () => {
+    const input = document.getElementById("projAddItem");
+    const text = input.value.trim();
+    if (!text) return;
+    addProjectShoppingItem(DB, p.id, text);
+    openProjectDetailModal(p.id);
+  };
+  document.getElementById("projAddItemBtn").onclick = addItem;
+  document.getElementById("projAddItem").onkeydown = (e) => { if (e.key === "Enter") addItem(); };
+  document.querySelectorAll("[data-proj-toggle-item]").forEach((el) => {
+    el.onclick = () => {
+      const [listId, itemId] = el.dataset.projToggleItem.split("|");
+      toggleShopItem(DB, listId, itemId);
+      openProjectDetailModal(p.id);
+    };
+  });
+  document.querySelectorAll("[data-proj-del-item]").forEach((btn) => {
+    btn.onclick = () => {
+      const [listId, itemId] = btn.dataset.projDelItem.split("|");
+      deleteShopItem(DB, listId, itemId);
+      openProjectDetailModal(p.id);
+    };
+  });
 }
 
 /* ---------- Toilet training: per-dog wee/poo outcome pickers ---------- */
@@ -732,6 +810,9 @@ function wireEvents() {
       if (project) openProjectModal(project);
       return;
     }
+
+    const openP = e.target.closest("[data-open-project]");
+    if (openP) { openProjectDetailModal(openP.dataset.openProject); return; }
 
     // Add a suggested routine (keeps the picker open)
     const sug = e.target.closest("[data-add-suggestion]");
