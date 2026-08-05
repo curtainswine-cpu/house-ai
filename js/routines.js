@@ -1227,10 +1227,34 @@ function toiletOutcomeSummary(db, outcomes) {
 /* Trying counts, per the app's usual no-guilt rule — success just earns
    more. Credited PER DOG from outcomes (one dog going while the other
    doesn't is common, not an all-or-nothing pair event any more), plus the
-   acting person's own level once, not doubled per dog. */
+   acting person's own level once, not doubled per dog.
+
+   Also doubles as the correction path: if this walk was already marked
+   (item.status set), whatever was credited for the OLD outcome is
+   reversed first, so fixing a mis-entered walk corrects the record
+   instead of stacking extra XP on top. Safe to call repeatedly. */
 function markToiletWalk(db, itemId, outcomes) {
   const item = db.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
+
+  if (item.status) {
+    db.pets.forEach((p) => {
+      const oldAmt = (item.outcomes && item.outcomes[p.id]) ? 8 : 3;
+      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) - oldAmt;
+      const key = `${db.activePerson}|${p.id}`;
+      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) - oldAmt;
+    });
+    awardXp(db, db.activePerson, -(item.status === "success" ? 8 : 3));
+
+    // A fail auto-added a retry — if it's still untouched, the correction
+    // no longer needs it; if she's already acted on it, leave it alone.
+    if (item.status === "fail") {
+      const retryIdx = db.toiletTraining.items.findIndex((i) =>
+        i.label === item.label.replace(/ \(retry\)$/, "") + " (retry)" && i.status === null);
+      if (retryIdx !== -1) db.toiletTraining.items.splice(retryIdx, 1);
+    }
+  }
+
   const anySuccess = db.pets.some((p) => outcomes[p.id]);
   item.status = anySuccess ? "success" : "fail";
   item.outcomes = outcomes;
@@ -1253,9 +1277,9 @@ function markToiletWalk(db, itemId, outcomes) {
     });
   }
 
-  db.toiletTraining.log.push({
-    id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label,
-  });
+  const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
+  if (logEntry) { logEntry.kind = item.status; logEntry.outcomes = outcomes; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label });
   saveDB(db);
 }
 
@@ -1302,11 +1326,14 @@ function toiletTrainingItemHTML(db, item) {
   const stepsHTML = (item.steps || []).length
     ? `<ul class="steps">${item.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : "";
   let actions;
-  if (item.status === "success") {
+  const editBtn = `<button class="icon-btn" data-tt-log="${item.id}" aria-label="Edit this walk">✎</button>`;
+  if (item.status === "success" && item.type === "walk") {
     const summary = toiletOutcomeSummary(db, item.outcomes);
-    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓${summary ? " " + summary : ""}</span>`;
-  } else if (item.status === "fail") {
-    actions = `<span class="tag">✗ Neither went — retry added below</span>`;
+    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓${summary ? " " + summary : ""}</span>${editBtn}`;
+  } else if (item.status === "fail" && item.type === "walk") {
+    actions = `<span class="tag">✗ Neither went — retry added below</span>${editBtn}`;
+  } else if (item.status === "success") {
+    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓ Done</span>`;
   } else if (item.type === "walk") {
     actions = `<button class="btn btn--mini" data-tt-log="${item.id}">📝 Log this walk</button>`;
   } else {

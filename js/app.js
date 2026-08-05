@@ -546,15 +546,18 @@ function openProjectDetailModal(projectId) {
 
 /* ---------- Toilet training: per-dog wee/poo outcome pickers ---------- */
 const TOILET_OUTCOME_OPTIONS = [["", "Didn't go"], ["wee", "Wee"], ["poo", "Poo"], ["both", "Both"]];
-function toiletOutcomeRowsHTML(idPrefix) {
-  return DB.pets.map((p) => `
+function toiletOutcomeRowsHTML(idPrefix, existingOutcomes) {
+  return DB.pets.map((p) => {
+    const current = (existingOutcomes && existingOutcomes[p.id]) || "";
+    return `
     <div class="field">
       <label>${escapeHTML(p.name)}</label>
       <div class="chip-row" id="${idPrefix}-${p.id}">
         ${TOILET_OUTCOME_OPTIONS.map(([val, label]) =>
-          `<button class="chip" data-value="${val}" aria-pressed="${val === ""}">${label}</button>`).join("")}
+          `<button class="chip" data-value="${val}" aria-pressed="${val === current}">${label}</button>`).join("")}
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 function wireToiletOutcomeRows(idPrefix, outcomes) {
   DB.pets.forEach((p) => {
@@ -567,16 +570,19 @@ function wireToiletOutcomeRows(idPrefix, outcomes) {
 }
 
 /* Log a scheduled walk's outcome — replaces the old blanket success/fail
-   buttons, since dogs can go independently of each other. */
+   buttons, since dogs can go independently of each other. Doubles as the
+   edit flow for an already-logged walk (pre-fills the existing outcome so
+   a wrong entry can be corrected rather than re-entered from scratch). */
 function openToiletLogModal(itemId) {
   const item = DB.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
-  openModal(`📝 ${item.label}`, `
-    ${toiletOutcomeRowsHTML("ttLogDog")}
-    <button class="btn btn--primary btn--block" id="ttLogSave">Save</button>
+  const isEdit = !!item.status;
+  openModal(`📝 ${item.label}${isEdit ? " — edit" : ""}`, `
+    ${toiletOutcomeRowsHTML("ttLogDog", item.outcomes)}
+    <button class="btn btn--primary btn--block" id="ttLogSave">${isEdit ? "Save correction" : "Save"}</button>
   `);
-  const outcomes = {};
-  DB.pets.forEach((p) => { outcomes[p.id] = null; });
+  const outcomes = Object.assign({}, item.outcomes);
+  DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
   wireToiletOutcomeRows("ttLogDog", outcomes);
   document.getElementById("ttLogSave").onclick = () => {
     markToiletWalk(DB, itemId, outcomes);
