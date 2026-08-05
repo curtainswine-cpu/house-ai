@@ -1063,6 +1063,48 @@ function toggleClaw(db, petId, clawKey) {
    each day from this template. A failed walk doesn't just get marked and
    dropped — it auto-adds a retry 20 minutes later, chaining again if that
    one fails too, per her explicit instruction. ---- */
+/* Read-only reference tips per day of the plan, keyed by day number —
+   distinct from db.toiletTraining.notes (which stays hers, freeform).
+   Auto-advances from startDate so this never needs manual correction as
+   the days pass. */
+const TOILET_TRAINING_DAY_TIPS = {
+  1: "Day 1 — building the routine:\n" +
+     "• Straight outside for every scheduled walk — no lounging, no phones first.\n" +
+     "• Be boring at the grass: stand still, no chat, no play.\n" +
+     "• Reward the instant they go — sausage + enthusiastic praise.\n" +
+     "• No luck after 10 min? Bring them in, lead attached nearby, try again in 20 minutes (the app adds that retry for you automatically).",
+  2: "Day 2 changes:\n" +
+     "• Open one extra room (e.g. bedroom + hallway) to test if they'll hold it or sneak off.\n" +
+     "• Watch for \"the ask\" around 12:55pm / 6:25pm — staring, standing by the door, waking from a nap.\n" +
+     "• Vary the reward — don't sausage a lazy dribble; save the big rewards for poops or a full first-morning-walk empty.",
+  3: "Day 3 — teaching them to cope alone in their Safe Zone:\n" +
+     "• 1:15pm: Safe Zone confinement — tiled/carpet-free area only, no sofa, no following you. Give each a safe chew or a frozen Kong stuffed with a tiny bit of wet food/plain yoghurt — keeps them busy the first 20 min and the licking soothes them to sleep. Close the door.\n" +
+     "• Ghost departures: coat + keys, step outside 5–10 min during the afternoon stretch, prove the routine holds even when you leave the flat.\n" +
+     "• Sausage roulette: reward 2 of 3 successful trips with sausage, just verbal praise for the third — variable reward makes it stronger.\n" +
+     "• Whining at the Safe Zone door: ignore completely, no talking/opening/scolding. Wait for 2 full minutes of silence before checking on them.",
+  4: "Day 4 — stretching crate endurance (halfway point!):\n" +
+     "• No bonus walk this time — full 1:15–6:30pm block (5+ hrs) in the crate, undisturbed. They can hold it much longer confined and asleep than loose.\n" +
+     "• Move the crate to a different room than Day 3 (e.g. living room/hallway) — they need to settle without seeing/hearing you nearby.\n" +
+     "• 1:15pm: sausage crumb inside, frozen Kong/chews, close and cover the crate.\n" +
+     "• 6:30pm \"no fuss\" exit: open calmly, no cuddles/excitement, straight to water + dinner — keeps arousal low so they don't leak.\n" +
+     "• Keep sausage pieces small to protect their weight. If they handle this stretch, they're officially halfway to the new routine.",
+  5: "Day 5 — earlier wakeup + real-world separation:\n" +
+     "• Morning walk shifts to 8:30am (see the schedule below) to start moving their body clock earlier.\n" +
+     "• The afternoon crate stretch naturally grows to 5.25 hours as a result.\n" +
+     "• Leave the flat completely for at least 2 hours during the crate block — a walk, a friend's, shopping. They need to practice being alone without your scent in the building, not just behind a closed door.",
+};
+
+/* Day-specific time shifts, applied on top of the base schedule when
+   generating that day's items — so a change like Day 5's earlier walk
+   doesn't need a separate schedule template, just an override. */
+const TOILET_TRAINING_TIME_OVERRIDES = {
+  5: { "Morning Walk 1": "08:30" },
+};
+function toiletTrainingDayNumber(db) {
+  if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
+  return Math.max(1, daysBetween(new Date(db.toiletTraining.startDate + "T00:00:00"), new Date()) + 1);
+}
+
 const TOILET_TRAINING_SCHEDULE = [
   { time: "09:00", label: "Morning Walk 1", type: "walk", duration: "10–15 min",
     steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"] },
@@ -1082,8 +1124,9 @@ function ensureToiletTrainingToday(db) {
   const today = todayKey();
   if (db.toiletTraining.lastGeneratedDate === today) return;
   db.toiletTraining.lastGeneratedDate = today;
+  const overrides = TOILET_TRAINING_TIME_OVERRIDES[toiletTrainingDayNumber(db)] || {};
   db.toiletTraining.items = TOILET_TRAINING_SCHEDULE.map((t, i) => ({
-    id: `base-${i}`, time: t.time, label: t.label, type: t.type,
+    id: `base-${i}`, time: overrides[t.label] || t.time, label: t.label, type: t.type,
     duration: t.duration || null, steps: t.steps, status: null,
   }));
   saveDB(db);
@@ -1152,10 +1195,20 @@ function renderToiletTraining(db) {
   if (!wrap) return;
   ensureToiletTrainingToday(db);
   const items = [...db.toiletTraining.items].sort((a, b) => a.time.localeCompare(b.time));
+  const dayNum = toiletTrainingDayNumber(db);
+  const dayTips = TOILET_TRAINING_DAY_TIPS[dayNum];
+
   wrap.innerHTML = `
-    <h3 class="section-label">🚽 Toilet training — today's schedule</h3>
+    <h3 class="section-label">🚽 Toilet training — Day ${dayNum}</h3>
     <div class="card-list">${items.map(toiletTrainingItemHTML).join("")}</div>
     <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot.</p>
+
+    ${dayTips ? `
+    <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
+      <strong>📋 Day ${dayNum} plan</strong>
+      <p class="view__sub" style="margin:0;white-space:pre-line">${escapeHTML(dayTips)}</p>
+    </div>` : `
+    <p class="view__sub" style="margin-top:14px">Day ${dayNum} — no specific plan notes yet for this day. Paste the next day's guidance whenever you have it and I'll add it here.</p>`}
 
     <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
       <strong>🧼 If there's an accident</strong>
@@ -1168,8 +1221,8 @@ function renderToiletTraining(db) {
     </div>
 
     <div class="field" style="margin-top:14px">
-      <label for="ttNotes">Today's notes</label>
-      <textarea id="ttNotes" rows="4" placeholder="Anything specific to today's plan…">${escapeHTML(db.toiletTraining.notes || "")}</textarea>
+      <label for="ttNotes">Your own notes</label>
+      <textarea id="ttNotes" rows="3" placeholder="Anything you want to jot down yourself…">${escapeHTML(db.toiletTraining.notes || "")}</textarea>
     </div>`;
 
   const notesEl = document.getElementById("ttNotes");

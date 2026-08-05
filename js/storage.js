@@ -228,8 +228,11 @@ function defaultData() {
     // Toilet training — one shared schedule for both dogs together (not
     // per-dog), regenerated fresh each day from TOILET_TRAINING_SCHEDULE.
     // A failed walk auto-adds a retry 20 minutes later rather than just
-    // marking it failed and moving on.
-    toiletTraining: { lastGeneratedDate: null, items: [], notes: "" },
+    // marking it failed and moving on. startDate anchors an auto-advancing
+    // day counter (see toiletTrainingDayNumber) so "today's tips" always
+    // matches the actual day of the plan without needing manual correction
+    // each time she pastes the next day's guidance.
+    toiletTraining: { lastGeneratedDate: null, items: [], notes: "", startDate: null },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
@@ -312,6 +315,7 @@ function normalize(db) {
   });
   if (!db.toiletTraining) db.toiletTraining = { lastGeneratedDate: null, items: [] };
   if (typeof db.toiletTraining.notes !== "string") db.toiletTraining.notes = "";
+  if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
@@ -856,28 +860,17 @@ function applySeedAdditions(db) {
     db.appliedSeeds.petFlavour = true;
   }
 
-  // Today's toilet-training notes, seeded once as a starting point (added
-  // August 2026) — this field is hers to edit/replace each day as the
-  // plan evolves, not something re-seeded going forward.
-  if (!db.appliedSeeds.toiletTrainingDay2Notes) {
-    db.toiletTraining.notes =
-      "Day 2 changes:\n" +
-      "• Open one extra room (e.g. bedroom + hallway) to test if they'll hold it or sneak off.\n" +
-      "• Watch for \"the ask\" around 12:55pm / 6:25pm — staring, standing by the door, waking from a nap.\n" +
-      "• Vary the reward — don't sausage a lazy dribble; save the big rewards for poops or a full first-morning-walk empty.";
-    db.appliedSeeds.toiletTrainingDay2Notes = true;
-  }
-
-  // Day 3 supersedes the Day 2 notes above (added August 2026) — separation
-  // practice: Safe Zone confinement, ghost departures, variable reward.
-  if (!db.appliedSeeds.toiletTrainingDay3Notes) {
-    db.toiletTraining.notes =
-      "Day 3 — teaching them to cope alone in their Safe Zone:\n" +
-      "• 1:15pm: Safe Zone confinement — tiled/carpet-free area only, no sofa, no following you. Give each a safe chew or a frozen Kong stuffed with a tiny bit of wet food/plain yoghurt — keeps them busy the first 20 min and the licking soothes them to sleep. Close the door.\n" +
-      "• Ghost departures: coat + keys, step outside 5–10 min during the afternoon stretch, prove the routine holds even when you leave the flat.\n" +
-      "• Sausage roulette: reward 2 of 3 successful trips with sausage, just verbal praise for the third — variable reward makes it stronger.\n" +
-      "• Whining at the Safe Zone door: ignore completely, no talking/opening/scolding. Wait for 2 full minutes of silence before checking on them.";
-    db.appliedSeeds.toiletTrainingDay3Notes = true;
+  // Correction (added August 2026): the day-specific plan tips were
+  // originally written straight into the freeform notes field, one
+  // overwrite per message — but training actually starts today, not on
+  // whatever message count we were at. Replaced with an auto-advancing
+  // day counter (see toiletTrainingDayNumber/TOILET_TRAINING_DAY_TIPS in
+  // routines.js) so this can't drift out of sync again. Clears whichever
+  // day's guessed text ended up in notes and anchors day 1 to today.
+  if (!db.appliedSeeds.toiletTrainingDayCounterFix) {
+    db.toiletTraining.notes = "";
+    db.toiletTraining.startDate = todayKey();
+    db.appliedSeeds.toiletTrainingDayCounterFix = true;
   }
 
   // Real birthdates for both of you (added August 2026) — ages computed
