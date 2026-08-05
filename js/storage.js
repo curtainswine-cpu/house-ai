@@ -907,6 +907,28 @@ function applySeedAdditions(db) {
     db.appliedSeeds.toiletTrainingPostponeAug5 = true;
   }
 
+  // Added a 12:15 walk to the warm-up day (added August 2026) — that's
+  // her actual water-bowl-down moment, so the later Afternoon/Early
+  // Evening walk steps shift down a slot (water up, then just a plain
+  // business trip) to match. Patches today's already-generated items
+  // directly rather than regenerating, so anything already ticked off
+  // stays ticked.
+  if (!db.appliedSeeds.toiletTrainingWarmup1215) {
+    const items = db.toiletTraining.items || [];
+    if (!items.find((i) => i.time === "12:15" && i.label === "Midday Walk")) {
+      items.push({
+        id: "warmup-1215", time: "12:15", label: "Midday Walk", type: "walk",
+        duration: "5–7 min", status: null,
+        steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"],
+      });
+    }
+    const afternoon = items.find((i) => i.label === "Afternoon Walk");
+    if (afternoon) afternoon.steps = ["Boring, business-only trip", "Reward on the grass", "Water bowl lifted up the moment you're back inside"];
+    const earlyEvening = items.find((i) => i.label === "Early Evening Walk");
+    if (earlyEvening) earlyEvening.steps = ["Boring, business-only trip", "Reward on the grass"];
+    db.appliedSeeds.toiletTrainingWarmup1215 = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).

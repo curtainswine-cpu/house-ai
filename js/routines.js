@@ -1148,10 +1148,12 @@ function isTimeDueNow(timeStr) {
    and applies to any "walk" item regardless of which schedule it came
    from) and the same water/feeding handling as Day 1. */
 const TOILET_TRAINING_WARMUP_SCHEDULE = [
-  { time: "15:00", label: "Afternoon Walk", type: "walk", duration: "5–7 min",
+  { time: "12:15", label: "Midday Walk", type: "walk", duration: "5–7 min",
     steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"] },
-  { time: "18:00", label: "Early Evening Walk", type: "walk", duration: "5–7 min",
+  { time: "15:00", label: "Afternoon Walk", type: "walk", duration: "5–7 min",
     steps: ["Boring, business-only trip", "Reward on the grass", "Water bowl lifted up the moment you're back inside"] },
+  { time: "18:00", label: "Early Evening Walk", type: "walk", duration: "5–7 min",
+    steps: ["Boring, business-only trip", "Reward on the grass"] },
   { time: "18:30", label: "Dinner & water", type: "event",
     steps: ["Water bowl back down", "Feed their single daily meal (slightly less — they've had sausage today)"] },
   { time: "19:00", label: "Post-Dinner Walk", type: "walk", duration: "15 min",
