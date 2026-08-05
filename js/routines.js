@@ -1092,13 +1092,28 @@ const TOILET_TRAINING_DAY_TIPS = {
      "• Morning walk shifts to 8:30am (see the schedule below) to start moving their body clock earlier.\n" +
      "• The afternoon crate stretch naturally grows to 5.25 hours as a result.\n" +
      "• Leave the flat completely for at least 2 hours during the crate block — a walk, a friend's, shopping. They need to practice being alone without your scent in the building, not just behind a closed door.",
+  6: "Day 6 — pushing toward the real return-to-work sequence:\n" +
+     "• Morning walk shifts earlier again, to 7:45am (alarm for 7:40) — working toward the eventual 6:15am goal.\n" +
+     "• Morning gap before Walk 2 stretches to 5.25 hours — keep them confined with you so they settle and nap.\n" +
+     "• By now they should walk into the crate on their own once they see the frozen Kongs come out at 1:15pm.\n" +
+     "• Start phasing out sausage for a simple, lazy pee — save the top rewards for poops and the 7:45am morning empty-out.",
+  7: "Day 7 — the final milestone: locking in the real workday rhythm:\n" +
+     "• Real wakeup: alarm 6:10am, walk at 6:15am — the actual time your body needs to adjust to for going back to work.\n" +
+     "• Double morning routine: a second walk at 10:10am — this becomes Jack's future walk slot before he leaves for the office.\n" +
+     "• Full workday simulation: crate from 10:25am to 6:30pm, the real 8-hour stretch you'll both face at work. Try to leave the flat for several hours to make it real.",
 };
 
-/* Day-specific time shifts, applied on top of the base schedule when
-   generating that day's items — so a change like Day 5's earlier walk
-   doesn't need a separate schedule template, just an override. */
-const TOILET_TRAINING_TIME_OVERRIDES = {
-  5: { "Morning Walk 1": "08:30" },
+/* Day-specific overrides (time and/or label), applied on top of the base
+   schedule when generating that day's items — so a change like Day 7
+   introducing an actual new walk slot doesn't need a separate schedule
+   template, just an override on the existing "Midday Walk 2" entry. */
+const TOILET_TRAINING_OVERRIDES = {
+  5: { "Morning Walk 1": { time: "08:30" } },
+  6: { "Morning Walk 1": { time: "07:45" } },
+  7: {
+    "Morning Walk 1": { time: "06:15", duration: "10 min" },
+    "Midday Walk 2": { time: "10:10", label: "Pre-Work Walk 2 (Jack's future slot)" },
+  },
 };
 function toiletTrainingDayNumber(db) {
   if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
@@ -1138,11 +1153,14 @@ function ensureToiletTrainingToday(db) {
   const today = todayKey();
   if (db.toiletTraining.lastGeneratedDate === today) return;
   db.toiletTraining.lastGeneratedDate = today;
-  const overrides = TOILET_TRAINING_TIME_OVERRIDES[toiletTrainingDayNumber(db)] || {};
-  db.toiletTraining.items = TOILET_TRAINING_SCHEDULE.map((t, i) => ({
-    id: `base-${i}`, time: overrides[t.label] || t.time, label: t.label, type: t.type,
-    duration: t.duration || null, steps: t.steps, status: null,
-  }));
+  const overrides = TOILET_TRAINING_OVERRIDES[toiletTrainingDayNumber(db)] || {};
+  db.toiletTraining.items = TOILET_TRAINING_SCHEDULE.map((t, i) => {
+    const ov = overrides[t.label] || {};
+    return {
+      id: `base-${i}`, time: ov.time || t.time, label: ov.label || t.label, type: t.type,
+      duration: ov.duration || t.duration || null, steps: t.steps, status: null,
+    };
+  });
   saveDB(db);
 }
 
