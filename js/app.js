@@ -237,22 +237,22 @@ function openRoomModal(roomId) {
 
   openModal(`${room.icon || "🏠"} ${room.name}`, `
     <p style="margin:0 0 10px;color:var(--muted);font-size:.85rem">${escapeHTML(room.floor || "")}</p>
-    <div class="room-modal__stats">
+    <div class="chip-row">
+      <button class="chip" data-room-tab="cleaning" aria-pressed="${_roomModalTab === "cleaning"}">🧹 Cleaning</button>
+      <button class="chip" data-room-tab="projects" aria-pressed="${_roomModalTab === "projects"}">📋 Projects</button>
+    </div>
+    <div class="room-modal__stats" style="margin-top:14px">
       <button class="chip" data-cycle-priority="${room.id}">${PRIORITY_LABEL[room.priority] || PRIORITY_LABEL.green}</button>
       <span class="tag">${progressText}</span>
     </div>
     ${prog.total ? `<div class="room-modal__bar"><div class="room-modal__bar-fill" style="width:${prog.pct}%"></div></div>` : ""}
     <p style="margin:10px 0 12px;color:var(--muted);font-size:.85rem">Last full clean: ${daysAgoLabel(room.lastFullClean)}</p>
     <button class="btn btn--mini" data-log-full-clean="${room.id}">✓ Log a full clean today</button>
+    ${_roomModalTab === "cleaning" ? cleaningTabHTML : projectsTabHTML}
     <div class="field" style="margin-top:14px">
       <label for="roomNotes">Notes</label>
       <textarea id="roomNotes" rows="2" placeholder="Anything worth remembering about this room…">${escapeHTML(room.notes || "")}</textarea>
     </div>
-    <div class="chip-row" style="margin-top:14px">
-      <button class="chip" data-room-tab="cleaning" aria-pressed="${_roomModalTab === "cleaning"}">🧹 Cleaning</button>
-      <button class="chip" data-room-tab="projects" aria-pressed="${_roomModalTab === "projects"}">📋 Projects</button>
-    </div>
-    ${_roomModalTab === "cleaning" ? cleaningTabHTML : projectsTabHTML}
   `);
   _openRoomId = roomId;
 

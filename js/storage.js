@@ -1027,6 +1027,28 @@ function applySeedAdditions(db) {
     db.appliedSeeds.laundryProjectRoomTag = true;
   }
 
+  // Split the stairs by flight (added August 2026) — each flight is its
+  // own room, living on the floor it leads TO (Ground-to-First belongs on
+  // First Floor, same relationship Landing has to Entryway on Ground; the
+  // other two flights — Lower Ground-to-Ground and First-to-Loft — didn't
+  // have their own room at all). Existing "Hoover/dust/carpet clean all
+  // stairs" jobs stay with the relocated room untouched; the two brand
+  // new stairs rooms start empty — add jobs with the room's own button.
+  if (!db.appliedSeeds.splitStairsByFlight) {
+    const stairs = db.cleaningGame.rooms.find((r) => r.name === "Stairs" && r.floor === "Ground Floor");
+    if (stairs) stairs.floor = "First Floor";
+
+    ["Lower Ground Floor", "Loft Floor"].forEach((floor) => {
+      if (!db.cleaningGame.rooms.some((r) => r.name === "Stairs" && r.floor === floor)) {
+        db.cleaningGame.rooms.push({
+          id: uid(), name: "Stairs", floor, icon: "🪜",
+          lastFullClean: null, priority: "green", notes: "",
+        });
+      }
+    });
+    db.appliedSeeds.splitStairsByFlight = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).

@@ -1720,29 +1720,37 @@ const FLOOR_TAB_ORDER = ["Lower Ground Floor", "Ground Floor", "First Floor", "L
 const FLOOR_PLAN_LAYOUT = {
   "Lower Ground Floor": {
     viewBox: "0 0 300 320",
-    rooms: { "Kitchen": [20, 20, 260, 280] },
+    rooms: {
+      "Stairs":  [20, 20, 60, 280],
+      "Kitchen": [90, 20, 190, 280],
+    },
   },
   "Ground Floor": {
     viewBox: "0 0 300 320",
+    // Two separate voids for orientation only — the actual clickable rooms
+    // for each flight live where they lead TO (Lower Ground and First Floor).
+    stairwell: [[20, 20, 60, 70], [20, 100, 70, 200]],
     rooms: {
-      "Entryway":    [20, 20, 260, 70],
-      "Stairs":      [20, 100, 70, 200],
+      "Entryway":    [90, 20, 190, 70],
       "Living Room": [100, 100, 180, 140],
       "Dog Area":    [100, 250, 180, 50],
     },
   },
   "First Floor": {
     viewBox: "0 0 300 320",
-    stairwell: [20, 90, 70, 210],
     rooms: {
       "Landing":  [20, 20, 260, 60],
+      "Stairs":   [20, 90, 70, 210],
       "Bedroom":  [100, 90, 180, 140],
       "Bathroom": [100, 240, 180, 60],
     },
   },
   "Loft Floor": {
     viewBox: "0 0 300 320",
-    rooms: { "Loft": [20, 20, 260, 280] },
+    rooms: {
+      "Stairs": [20, 20, 60, 280],
+      "Loft":   [90, 20, 190, 280],
+    },
   },
 };
 
@@ -1772,9 +1780,13 @@ function floorPlanSVG(db, floorName) {
   const layout = FLOOR_PLAN_LAYOUT[floorName];
   if (!layout) return "";
   const roomsOnFloor = db.cleaningGame.rooms.filter((r) => r.floor === floorName);
-  const stairwell = layout.stairwell
-    ? `<rect x="${layout.stairwell[0]}" y="${layout.stairwell[1]}" width="${layout.stairwell[2]}" height="${layout.stairwell[3]}" class="fp-stairwell" />`
-    : "";
+  // Accepts either one box or several (Ground Floor has a void for each
+  // flight — down to Lower Ground, up to First) — decorative only, the
+  // actual clickable Stairs room lives on whichever floor the flight leads to.
+  const stairwellBoxes = layout.stairwell ? (Array.isArray(layout.stairwell[0]) ? layout.stairwell : [layout.stairwell]) : [];
+  const stairwell = stairwellBoxes
+    .map((box) => `<rect x="${box[0]}" y="${box[1]}" width="${box[2]}" height="${box[3]}" class="fp-stairwell" />`)
+    .join("");
   const roomsHTML = Object.entries(layout.rooms)
     .map(([name, box]) => { const room = roomsOnFloor.find((r) => r.name === name); return room ? floorPlanRoomHTML(db, room, box) : ""; })
     .join("");
