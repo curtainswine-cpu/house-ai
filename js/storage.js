@@ -980,8 +980,9 @@ function applySeedAdditions(db) {
     if (corner) {
       corner.room = bedroomId || null;
       corner.steps = [
+        { title: "Measure available space for each unit — mini wardrobe with rail, centre unit, under-table unit", done: false },
         { title: "Tidy the shelf — books stay, tidy sprays/decor/Fire Stick around them", done: false },
-        { title: "Fit the drop-down cloth door (left side) — tension rod/track + fabric panel over the hooks/rod, hiding jackets", done: false },
+        { title: "Fit the mini wardrobe with rail (left side) — cloth drop-down door on tension rod/track hides the hanging jackets", done: false },
         { title: "Build the centre unit — compartments for makeup, brushes and jewelry, replacing the small stand", done: false },
         { title: "Build the under-table unit (right side) — for hats, bags and paper, using the dead space under the table", done: false },
         { title: "Move shoes to the under-bed box — flat clear box for everyday/work shoes, floor rack comes out", done: false },
@@ -993,7 +994,10 @@ function applySeedAdditions(db) {
     const items = [
       "Flat under-bed box, clear plastic — for shoes",
       "1 lidded bin for jewelry & trinkets — top shelf",
-      "Tension rod or track + fabric panel — drop-down door, left side",
+      "Tape measure — measure up all three units before buying materials",
+      "Lumber/plywood — mini wardrobe frame (left side)",
+      "Wardrobe rail/rod + end brackets — mini wardrobe, left side",
+      "Tension rod or track + fabric panel — cloth drop-down door, left side",
       "Lumber/plywood + compartment inserts — centre built-in unit (makeup, brushes, jewelry)",
       "Lumber/plywood + dividers — under-table unit (hats, bags, paper)",
       "Labels for all bins",
