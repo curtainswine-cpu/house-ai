@@ -1273,7 +1273,7 @@ function markToiletWalk(db, itemId, outcomes) {
     const retryTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
     db.toiletTraining.items.push({
       id: uid(), time: retryTime, label: item.label.replace(/ \(retry\)$/, "") + " (retry)",
-      type: "walk", duration: item.duration, steps: item.steps, status: null,
+      type: "walk", duration: item.duration, steps: item.steps, status: null, adhoc: true,
     });
   }
 
@@ -1299,8 +1299,28 @@ function markToiletEvent(db, itemId) {
    it actually happened. "success" here earns the same as a scheduled
    walk success (arguably more praiseworthy — she went out of her way);
    "accident" earns nothing, per the no-guilt rule — it's a data point for
-   spotting patterns, not something to be penalised for. */
-function logToiletTrip(db, { time, kind, outcomes }) {
+   spotting patterns, not something to be penalised for.
+
+   Shows up as a normal card in today's timeline (not just the log list at
+   the bottom) — marked `adhoc: true` so it's fully deletable rather than
+   resettable-to-pending like a scheduled slot. Pass an existing itemId to
+   correct one already logged (reverses its old credit first, same
+   pattern as markToiletWalk) instead of creating a duplicate. */
+function logToiletTrip(db, { itemId, time, kind, outcomes }) {
+  const finalTime = time || nowTimeStr();
+  const label = kind === "accident" ? "Accident" : "Extra trip";
+  let item = itemId ? db.toiletTraining.items.find((i) => i.id === itemId) : null;
+
+  if (item && item.status === "success") {
+    db.pets.forEach((p) => {
+      if (!item.outcomes || !item.outcomes[p.id]) return;
+      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) - 8;
+      const key = `${db.activePerson}|${p.id}`;
+      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) - 8;
+    });
+    if (db.pets.some((p) => item.outcomes && item.outcomes[p.id])) awardXp(db, db.activePerson, -8);
+  }
+
   if (kind === "success") {
     db.pets.forEach((p) => {
       if (!outcomes[p.id]) return;
@@ -1310,10 +1330,66 @@ function logToiletTrip(db, { time, kind, outcomes }) {
     });
     if (db.pets.some((p) => outcomes[p.id])) awardXp(db, db.activePerson, 8);
   }
-  db.toiletTraining.log.push({
-    id: uid(), date: todayKey(), time: time || nowTimeStr(), kind, outcomes, itemId: null,
-    label: kind === "accident" ? "Accident" : "Extra trip",
-  });
+
+  if (item) {
+    item.time = finalTime; item.status = kind; item.outcomes = outcomes; item.label = label;
+  } else {
+    item = { id: uid(), time: finalTime, label, type: "walk", duration: null, steps: [], status: kind, outcomes, adhoc: true };
+    db.toiletTraining.items.push(item);
+  }
+
+  const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
+  if (logEntry) { logEntry.time = finalTime; logEntry.kind = kind; logEntry.outcomes = outcomes; logEntry.label = label; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: finalTime, kind, outcomes, itemId: item.id, label });
+  saveDB(db);
+}
+
+/* Removes a walk entirely (ad-hoc trips/accidents, and stray auto-added
+   retries) or, for a fixed scheduled slot, resets it back to pending
+   rather than deleting the slot itself — fixes an accidental duplicate
+   log without leaving a hole in the day's template. Reverses whatever
+   XP/companionship it credited either way. */
+function deleteToiletWalk(db, itemId) {
+  const idx = db.toiletTraining.items.findIndex((i) => i.id === itemId);
+  if (idx === -1) return;
+  const item = db.toiletTraining.items[idx];
+
+  if (item.status) {
+    // Scheduled walks (markToiletWalk) credit every dog something — 8 if
+    // they went, 3 "tried" either way. Ad-hoc trips/accidents
+    // (logToiletTrip) only ever credit a dog that actually has an
+    // outcome — no consolation amount for the other one. Reversal has to
+    // match whichever scheme actually created the credit, or a dog with
+    // no outcome on an ad-hoc entry goes negative.
+    const perDogAmt = (p) => {
+      if (item.status === "accident") return 0;
+      const went = item.outcomes && item.outcomes[p.id];
+      if (went) return 8;
+      return item.adhoc ? 0 : 3;
+    };
+    db.pets.forEach((p) => {
+      const amt = perDogAmt(p);
+      if (!amt) return;
+      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) - amt;
+      const key = `${db.activePerson}|${p.id}`;
+      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) - amt;
+    });
+    const anyWent = db.pets.some((p) => item.outcomes && item.outcomes[p.id]);
+    const humanAmt = item.status === "accident" ? 0 : (item.adhoc ? (anyWent ? 8 : 0) : (item.status === "success" ? 8 : 3));
+    if (humanAmt) awardXp(db, db.activePerson, -humanAmt);
+  }
+
+  db.toiletTraining.log = db.toiletTraining.log.filter((e) => e.itemId !== itemId);
+
+  if (item.adhoc) {
+    db.toiletTraining.items.splice(idx, 1);
+  } else {
+    item.status = null;
+    item.outcomes = null;
+    const retryIdx = db.toiletTraining.items.findIndex((i) =>
+      i.label === item.label.replace(/ \(retry\)$/, "") + " (retry)" && i.status === null);
+    if (retryIdx !== -1) db.toiletTraining.items.splice(retryIdx, 1);
+  }
   saveDB(db);
 }
 
@@ -1326,12 +1402,18 @@ function toiletTrainingItemHTML(db, item) {
   const stepsHTML = (item.steps || []).length
     ? `<ul class="steps">${item.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : "";
   let actions;
-  const editBtn = `<button class="icon-btn" data-tt-log="${item.id}" aria-label="Edit this walk">✎</button>`;
+  const editBtn = item.adhoc
+    ? `<button class="icon-btn" data-tt-trip-edit="${item.id}" aria-label="Edit">✎</button>`
+    : `<button class="icon-btn" data-tt-log="${item.id}" aria-label="Edit this walk">✎</button>`;
+  const deleteBtn = `<button class="icon-btn" data-tt-delete="${item.id}" aria-label="Delete">🗑</button>`;
   if (item.status === "success" && item.type === "walk") {
     const summary = toiletOutcomeSummary(db, item.outcomes);
-    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓${summary ? " " + summary : ""}</span>${editBtn}`;
+    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓${summary ? " " + summary : ""}</span>${editBtn}${deleteBtn}`;
   } else if (item.status === "fail" && item.type === "walk") {
-    actions = `<span class="tag">✗ Neither went — retry added below</span>${editBtn}`;
+    actions = `<span class="tag">✗ Neither went — retry added below</span>${editBtn}${deleteBtn}`;
+  } else if (item.status === "accident") {
+    const summary = toiletOutcomeSummary(db, item.outcomes);
+    actions = `<span class="tag" style="background:#5a3a1a;color:#ffb84d;border-color:transparent">🚨${summary ? " " + summary : ""}</span>${editBtn}${deleteBtn}`;
   } else if (item.status === "success") {
     actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓ Done</span>`;
   } else if (item.type === "walk") {

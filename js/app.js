@@ -592,26 +592,30 @@ function openToiletLogModal(itemId) {
 }
 
 /* Ad-hoc trip — not tied to a scheduled slot: a proactive extra walk, or
-   an accident, logged with a real time (defaults to now, editable). */
-function openToiletTripModal() {
-  openModal("➕ Log a toilet trip", `
+   an accident, logged with a real time (defaults to now, editable).
+   Pass an existing item's id to correct one already logged instead of
+   creating a duplicate — same modal, pre-filled. */
+function openToiletTripModal(existingItemId) {
+  const existing = existingItemId ? DB.toiletTraining.items.find((i) => i.id === existingItemId) : null;
+  openModal(existing ? "✎ Edit toilet trip" : "➕ Log a toilet trip", `
     <div class="field">
       <label for="ttTripTime">When?</label>
-      <input id="ttTripTime" type="time" value="${nowTimeStr()}" />
+      <input id="ttTripTime" type="time" value="${existing ? existing.time : nowTimeStr()}" />
     </div>
     <div class="field">
       <label>Right place, or an accident?</label>
       <div class="chip-row" id="ttTripKind">
-        <button class="chip" data-value="success" aria-pressed="true">✓ Success</button>
-        <button class="chip" data-value="accident" aria-pressed="false">✗ Accident</button>
+        <button class="chip" data-value="success" aria-pressed="${!existing || existing.status !== "accident"}">✓ Success</button>
+        <button class="chip" data-value="accident" aria-pressed="${!!(existing && existing.status === "accident")}">✗ Accident</button>
       </div>
     </div>
-    ${toiletOutcomeRowsHTML("ttTripDog")}
-    <button class="btn btn--primary btn--block" id="ttTripSave">Save</button>
+    ${toiletOutcomeRowsHTML("ttTripDog", existing && existing.outcomes)}
+    <button class="btn btn--primary btn--block" id="ttTripSave">${existing ? "Save correction" : "Save"}</button>
+    ${existing ? `<button class="btn btn--danger btn--block" id="ttTripDelete">Delete this entry</button>` : ""}
   `);
-  let kind = "success";
-  const outcomes = {};
-  DB.pets.forEach((p) => { outcomes[p.id] = null; });
+  let kind = existing ? existing.status : "success";
+  const outcomes = Object.assign({}, existing && existing.outcomes);
+  DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
   document.getElementById("ttTripKind").onclick = (e) => {
     const b = e.target.closest("[data-value]"); if (!b) return;
     kind = b.dataset.value; pressOne("ttTripKind", b);
@@ -619,10 +623,17 @@ function openToiletTripModal() {
   wireToiletOutcomeRows("ttTripDog", outcomes);
   document.getElementById("ttTripSave").onclick = () => {
     const time = document.getElementById("ttTripTime").value || nowTimeStr();
-    logToiletTrip(DB, { time, kind, outcomes });
+    logToiletTrip(DB, { itemId: existingItemId || null, time, kind, outcomes });
     closeModal();
     render();
   };
+  if (existing) {
+    document.getElementById("ttTripDelete").onclick = () => {
+      deleteToiletWalk(DB, existingItemId);
+      closeModal();
+      render();
+    };
+  }
 }
 
 /* ---------- Suggested routines picker ---------- */
@@ -878,6 +889,10 @@ function wireEvents() {
     const ttLog = e.target.closest("[data-tt-log]");
     if (ttLog) { openToiletLogModal(ttLog.dataset.ttLog); return; }
     if (e.target.closest("[data-tt-log-trip]")) { openToiletTripModal(); return; }
+    const ttTripEdit = e.target.closest("[data-tt-trip-edit]");
+    if (ttTripEdit) { openToiletTripModal(ttTripEdit.dataset.ttTripEdit); return; }
+    const ttDelete = e.target.closest("[data-tt-delete]");
+    if (ttDelete) { deleteToiletWalk(DB, ttDelete.dataset.ttDelete); render(); return; }
     if (e.target.closest("[data-tt-reset]")) { resetToiletTraining(DB); render(); return; }
     if (e.target.closest("[data-tt-postpone]")) { postponeToiletTrainingStart(DB); render(); return; }
 
