@@ -1125,6 +1125,25 @@ function toiletTrainingDayNumber(db) {
   if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
   return Math.max(1, daysBetween(new Date(db.toiletTraining.startDate + "T00:00:00"), new Date()) + 1);
 }
+/* Tomorrow's first walk — so she can see tonight what time to set her
+   alarm for, rather than only finding out once tomorrow's schedule has
+   already generated. Mirrors ensureToiletTrainingToday's own warm-up vs.
+   real-day branching, just one day ahead. */
+function toiletTrainingTomorrowPreview(db) {
+  if (!db.toiletTraining.startDate) return null;
+  const tomorrow = new Date(Date.now() + 86400000);
+  const tomorrowKey = todayKey(tomorrow);
+  if (tomorrowKey < db.toiletTraining.startDate) {
+    const first = TOILET_TRAINING_WARMUP_SCHEDULE[0];
+    return { dayLabel: "warm-up", time: first.time, title: first.label };
+  }
+  const dayNum = Math.max(1, daysBetween(new Date(db.toiletTraining.startDate + "T00:00:00"), tomorrow) + 1);
+  const overrides = TOILET_TRAINING_OVERRIDES[dayNum] || {};
+  const first = TOILET_TRAINING_SCHEDULE[0];
+  const ov = overrides[first.label] || {};
+  return { dayLabel: `Day ${dayNum}`, time: ov.time || first.time, title: ov.label || first.label };
+}
+
 /* True on any day before the real Day 1 begins — e.g. after pushing the
    start back a day. Today still gets a lighter warm-up schedule (see
    TOILET_TRAINING_WARMUP_SCHEDULE) rather than silently showing full
@@ -1465,6 +1484,7 @@ function renderToiletTraining(db) {
   const dayNum = toiletTrainingDayNumber(db);
   const dayTips = TOILET_TRAINING_DAY_TIPS[dayNum];
   const heading = warmup ? "🚽 Toilet training — warm-up (Day 1 starts tomorrow)" : `🚽 Toilet training — Day ${dayNum}`;
+  const tomorrow = toiletTrainingTomorrowPreview(db);
 
   wrap.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
@@ -1474,6 +1494,7 @@ function renderToiletTraining(db) {
         <button class="link-btn" data-tt-reset>↺ Reset (back to Day 1)</button>
       </span>
     </div>
+    ${tomorrow ? `<p class="view__sub" style="margin:4px 0 0">⏰ Tomorrow (${tomorrow.dayLabel}): first walk "${escapeHTML(tomorrow.title)}" at ${formatTime12(tomorrow.time)} — set your alarm.</p>` : ""}
     <div class="card-list">${items.map((i) => toiletTrainingItemHTML(db, i)).join("")}</div>
     <button class="btn btn--ghost btn--block" style="margin-top:10px" data-tt-log-trip>➕ Log a toilet trip</button>
     <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot. Went again outside the schedule (or had an accident)? Log it above — every trip counts toward spotting their real pattern.</p>
