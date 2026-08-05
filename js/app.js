@@ -466,6 +466,81 @@ function openProjectModal(existing, presetRoom) {
   }
 }
 
+/* ---------- Toilet training: per-dog wee/poo outcome pickers ---------- */
+const TOILET_OUTCOME_OPTIONS = [["", "Didn't go"], ["wee", "Wee"], ["poo", "Poo"], ["both", "Both"]];
+function toiletOutcomeRowsHTML(idPrefix) {
+  return DB.pets.map((p) => `
+    <div class="field">
+      <label>${escapeHTML(p.name)}</label>
+      <div class="chip-row" id="${idPrefix}-${p.id}">
+        ${TOILET_OUTCOME_OPTIONS.map(([val, label]) =>
+          `<button class="chip" data-value="${val}" aria-pressed="${val === ""}">${label}</button>`).join("")}
+      </div>
+    </div>`).join("");
+}
+function wireToiletOutcomeRows(idPrefix, outcomes) {
+  DB.pets.forEach((p) => {
+    document.getElementById(`${idPrefix}-${p.id}`).onclick = (e) => {
+      const b = e.target.closest("[data-value]"); if (!b) return;
+      outcomes[p.id] = b.dataset.value || null;
+      pressOne(`${idPrefix}-${p.id}`, b);
+    };
+  });
+}
+
+/* Log a scheduled walk's outcome — replaces the old blanket success/fail
+   buttons, since dogs can go independently of each other. */
+function openToiletLogModal(itemId) {
+  const item = DB.toiletTraining.items.find((i) => i.id === itemId);
+  if (!item) return;
+  openModal(`📝 ${item.label}`, `
+    ${toiletOutcomeRowsHTML("ttLogDog")}
+    <button class="btn btn--primary btn--block" id="ttLogSave">Save</button>
+  `);
+  const outcomes = {};
+  DB.pets.forEach((p) => { outcomes[p.id] = null; });
+  wireToiletOutcomeRows("ttLogDog", outcomes);
+  document.getElementById("ttLogSave").onclick = () => {
+    markToiletWalk(DB, itemId, outcomes);
+    closeModal();
+    render();
+  };
+}
+
+/* Ad-hoc trip — not tied to a scheduled slot: a proactive extra walk, or
+   an accident, logged with a real time (defaults to now, editable). */
+function openToiletTripModal() {
+  openModal("➕ Log a toilet trip", `
+    <div class="field">
+      <label for="ttTripTime">When?</label>
+      <input id="ttTripTime" type="time" value="${nowTimeStr()}" />
+    </div>
+    <div class="field">
+      <label>Right place, or an accident?</label>
+      <div class="chip-row" id="ttTripKind">
+        <button class="chip" data-value="success" aria-pressed="true">✓ Success</button>
+        <button class="chip" data-value="accident" aria-pressed="false">✗ Accident</button>
+      </div>
+    </div>
+    ${toiletOutcomeRowsHTML("ttTripDog")}
+    <button class="btn btn--primary btn--block" id="ttTripSave">Save</button>
+  `);
+  let kind = "success";
+  const outcomes = {};
+  DB.pets.forEach((p) => { outcomes[p.id] = null; });
+  document.getElementById("ttTripKind").onclick = (e) => {
+    const b = e.target.closest("[data-value]"); if (!b) return;
+    kind = b.dataset.value; pressOne("ttTripKind", b);
+  };
+  wireToiletOutcomeRows("ttTripDog", outcomes);
+  document.getElementById("ttTripSave").onclick = () => {
+    const time = document.getElementById("ttTripTime").value || nowTimeStr();
+    logToiletTrip(DB, { time, kind, outcomes });
+    closeModal();
+    render();
+  };
+}
+
 /* ---------- Suggested routines picker ---------- */
 function openSuggestionsModal() {
   const have = new Set(DB.routines.map((r) => r.title));
@@ -712,10 +787,10 @@ function wireEvents() {
       toggleClaw(DB, petId, clawKey); render(); return;
     }
     const ttMark = e.target.closest("[data-tt-mark]");
-    if (ttMark) {
-      const [itemId, status] = ttMark.dataset.ttMark.split("|");
-      markToiletTraining(DB, itemId, status); render(); return;
-    }
+    if (ttMark) { markToiletEvent(DB, ttMark.dataset.ttMark); render(); return; }
+    const ttLog = e.target.closest("[data-tt-log]");
+    if (ttLog) { openToiletLogModal(ttLog.dataset.ttLog); return; }
+    if (e.target.closest("[data-tt-log-trip]")) { openToiletTripModal(); return; }
     if (e.target.closest("[data-tt-reset]")) { resetToiletTraining(DB); render(); return; }
     if (e.target.closest("[data-tt-postpone]")) { postponeToiletTrainingStart(DB); render(); return; }
 

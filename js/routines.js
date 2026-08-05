@@ -1210,52 +1210,107 @@ function ensureToiletTrainingToday(db) {
   saveDB(db);
 }
 
-/* Success/fail both earn something — trying counts, per the app's usual
-   no-guilt rule — success just earns more. Credits both dogs equally
-   (the plan treats them as a pair) plus the acting person's own level,
-   once, not doubled per dog. */
-function markToiletTraining(db, itemId, status) {
+function nowTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+const TOILET_OUTPUT_LABEL = { wee: "💧 Wee", poo: "💩 Poo", both: "💧💩 Both" };
+/* "Effie: 💧 Wee · Oddie: —" — per-dog, since one can go while the other
+   doesn't, or one wees while the other poos. outcomes is {petId: "wee"|
+   "poo"|"both"|null} or null for older entries logged before this existed. */
+function toiletOutcomeSummary(db, outcomes) {
+  if (!outcomes) return "";
+  return db.pets.map((p) => `${p.name}: ${outcomes[p.id] ? TOILET_OUTPUT_LABEL[outcomes[p.id]] : "—"}`).join(" · ");
+}
+
+/* Trying counts, per the app's usual no-guilt rule — success just earns
+   more. Credited PER DOG from outcomes (one dog going while the other
+   doesn't is common, not an all-or-nothing pair event any more), plus the
+   acting person's own level once, not doubled per dog. */
+function markToiletWalk(db, itemId, outcomes) {
   const item = db.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
-  item.status = status;
+  const anySuccess = db.pets.some((p) => outcomes[p.id]);
+  item.status = anySuccess ? "success" : "fail";
+  item.outcomes = outcomes;
 
-  if (item.type === "walk") {
-    const amt = status === "success" ? 8 : 3;
-    db.pets.forEach((p) => {
-      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) + amt;
-      const key = `${db.activePerson}|${p.id}`;
-      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) + amt;
+  db.pets.forEach((p) => {
+    const amt = outcomes[p.id] ? 8 : 3;
+    db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) + amt;
+    const key = `${db.activePerson}|${p.id}`;
+    db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) + amt;
+  });
+  awardXp(db, db.activePerson, anySuccess ? 8 : 3);
+
+  if (!anySuccess) {
+    const [h, m] = item.time.split(":").map(Number);
+    const total = h * 60 + m + 20;
+    const retryTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+    db.toiletTraining.items.push({
+      id: uid(), time: retryTime, label: item.label.replace(/ \(retry\)$/, "") + " (retry)",
+      type: "walk", duration: item.duration, steps: item.steps, status: null,
     });
-    awardXp(db, db.activePerson, amt);
-
-    if (status === "fail") {
-      const [h, m] = item.time.split(":").map(Number);
-      const total = h * 60 + m + 20;
-      const retryTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-      db.toiletTraining.items.push({
-        id: uid(), time: retryTime, label: item.label.replace(/ \(retry\)$/, "") + " (retry)",
-        type: "walk", duration: item.duration, steps: item.steps, status: null,
-      });
-    }
-  } else {
-    awardXp(db, db.activePerson, 3);
   }
+
+  db.toiletTraining.log.push({
+    id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label,
+  });
   saveDB(db);
 }
 
-function toiletTrainingItemHTML(item) {
+/* Non-walk schedule items (Dinner & water, water cutoffs) — no dog/output
+   picker, just a plain done tick, unchanged from before. */
+function markToiletEvent(db, itemId) {
+  const item = db.toiletTraining.items.find((i) => i.id === itemId);
+  if (!item) return;
+  item.status = "success";
+  awardXp(db, db.activePerson, 3);
+  db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: "success", outcomes: null, itemId: item.id, label: item.label });
+  saveDB(db);
+}
+
+/* Ad-hoc — not tied to a scheduled slot, for a proactive extra trip
+   ("went again after the final walk to be safe") or an accident whenever
+   it actually happened. "success" here earns the same as a scheduled
+   walk success (arguably more praiseworthy — she went out of her way);
+   "accident" earns nothing, per the no-guilt rule — it's a data point for
+   spotting patterns, not something to be penalised for. */
+function logToiletTrip(db, { time, kind, outcomes }) {
+  if (kind === "success") {
+    db.pets.forEach((p) => {
+      if (!outcomes[p.id]) return;
+      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) + 8;
+      const key = `${db.activePerson}|${p.id}`;
+      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) + 8;
+    });
+    if (db.pets.some((p) => outcomes[p.id])) awardXp(db, db.activePerson, 8);
+  }
+  db.toiletTraining.log.push({
+    id: uid(), date: todayKey(), time: time || nowTimeStr(), kind, outcomes, itemId: null,
+    label: kind === "accident" ? "Accident" : "Extra trip",
+  });
+  saveDB(db);
+}
+
+function todaysToiletLog(db) {
+  const today = todayKey();
+  return db.toiletTraining.log.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time));
+}
+
+function toiletTrainingItemHTML(db, item) {
   const stepsHTML = (item.steps || []).length
     ? `<ul class="steps">${item.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : "";
   let actions;
   if (item.status === "success") {
-    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓ Success</span>`;
+    const summary = toiletOutcomeSummary(db, item.outcomes);
+    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓${summary ? " " + summary : ""}</span>`;
   } else if (item.status === "fail") {
-    actions = `<span class="tag">✗ No luck — retry added below</span>`;
+    actions = `<span class="tag">✗ Neither went — retry added below</span>`;
   } else if (item.type === "walk") {
-    actions = `<button class="btn btn--mini" data-tt-mark="${item.id}|success">✓ Success</button>
-               <button class="btn btn--mini btn--quiet" data-tt-mark="${item.id}|fail">✗ No luck</button>`;
+    actions = `<button class="btn btn--mini" data-tt-log="${item.id}">📝 Log this walk</button>`;
   } else {
-    actions = `<button class="btn btn--mini" data-tt-mark="${item.id}|success">✓ Done</button>`;
+    actions = `<button class="btn btn--mini" data-tt-mark="${item.id}">✓ Done</button>`;
   }
   return `
     <article class="card" style="flex-direction:column;align-items:stretch;gap:6px">
@@ -1310,8 +1365,9 @@ function renderToiletTraining(db) {
         <button class="link-btn" data-tt-reset>↺ Reset (back to Day 1)</button>
       </span>
     </div>
-    <div class="card-list">${items.map(toiletTrainingItemHTML).join("")}</div>
-    <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot.</p>
+    <div class="card-list">${items.map((i) => toiletTrainingItemHTML(db, i)).join("")}</div>
+    <button class="btn btn--ghost btn--block" style="margin-top:10px" data-tt-log-trip>➕ Log a toilet trip</button>
+    <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot. Went again outside the schedule (or had an accident)? Log it above — every trip counts toward spotting their real pattern.</p>
 
     ${warmup ? `
     <p class="view__sub" style="margin-top:14px">Just a light warm-up today — shorter walks, same reward-and-retry approach, water/dinner handled the same as Day 1. The real Day 1 schedule and tips kick in tomorrow.</p>` : dayTips ? `
@@ -1330,6 +1386,20 @@ function renderToiletTraining(db) {
         <li>Tighten restrictions — back to one room for the rest of the afternoon; they're just not ready for the extra freedom yet</li>
       </ul>
     </div>
+
+    ${(() => {
+      const log = todaysToiletLog(db);
+      if (!log.length) return "";
+      const KIND_LABEL = { success: "✓", fail: "✗", accident: "🚨" };
+      const rows = log.map((e) => `
+        <li>${formatTime12(e.time)} — ${KIND_LABEL[e.kind] || ""} ${escapeHTML(e.label)}${e.outcomes ? ` — ${escapeHTML(toiletOutcomeSummary(db, e.outcomes))}` : ""}</li>
+      `).join("");
+      return `
+        <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
+          <strong>📋 Today's toileting log</strong>
+          <ul class="steps">${rows}</ul>
+        </div>`;
+    })()}
 
     <div class="field" style="margin-top:14px">
       <label for="ttNotes">Your own notes</label>

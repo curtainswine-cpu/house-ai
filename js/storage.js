@@ -232,7 +232,11 @@ function defaultData() {
     // day counter (see toiletTrainingDayNumber) so "today's tips" always
     // matches the actual day of the plan without needing manual correction
     // each time she pastes the next day's guidance.
-    toiletTraining: { lastGeneratedDate: null, items: [], notes: "", startDate: null },
+    // log[] records EVERY toileting outcome chronologically (scheduled walks
+    // AND ad-hoc trips/accidents logged any time of day) — separate from
+    // items[] (today's schedule display) so a full history survives each
+    // day's regeneration, for spotting real habits day to day.
+    toiletTraining: { lastGeneratedDate: null, items: [], notes: "", startDate: null, log: [] },
 
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
@@ -316,6 +320,7 @@ function normalize(db) {
   if (!db.toiletTraining) db.toiletTraining = { lastGeneratedDate: null, items: [] };
   if (typeof db.toiletTraining.notes !== "string") db.toiletTraining.notes = "";
   if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
+  if (!Array.isArray(db.toiletTraining.log)) db.toiletTraining.log = [];
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
