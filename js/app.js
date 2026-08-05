@@ -661,6 +661,7 @@ function wireEvents() {
       markToiletTraining(DB, itemId, status); render(); return;
     }
     if (e.target.closest("[data-tt-reset]")) { resetToiletTraining(DB); render(); return; }
+    if (e.target.closest("[data-tt-postpone]")) { postponeToiletTrainingStart(DB); render(); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

@@ -895,6 +895,18 @@ function applySeedAdditions(db) {
     db.appliedSeeds.newBeddingOrder = true;
   }
 
+  // Toilet training pushed back a day (added August 2026) — missed the
+  // planned start due to an allergy flare-up, so Day 1 anchors to
+  // tomorrow instead. Self-service equivalent: the "Push start back a
+  // day" button on the Pets page (postponeToiletTrainingStart in
+  // routines.js) for next time this happens.
+  if (!db.appliedSeeds.toiletTrainingPostponeAug5) {
+    db.toiletTraining.startDate = tomorrowKey();
+    db.toiletTraining.items = [];
+    db.toiletTraining.lastGeneratedDate = null;
+    db.appliedSeeds.toiletTrainingPostponeAug5 = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).

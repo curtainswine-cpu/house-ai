@@ -1119,6 +1119,14 @@ function toiletTrainingDayNumber(db) {
   if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
   return Math.max(1, daysBetween(new Date(db.toiletTraining.startDate + "T00:00:00"), new Date()) + 1);
 }
+/* True on any day before the real Day 1 begins — e.g. after pushing the
+   start back a day. Today still gets a lighter warm-up schedule (see
+   TOILET_TRAINING_WARMUP_SCHEDULE) rather than silently showing full
+   Day 1 content a day early. */
+function isBeforeToiletTrainingStart(db) {
+  if (!db.toiletTraining.startDate) return false;
+  return todayKey() < db.toiletTraining.startDate;
+}
 
 /* The next not-yet-marked item in today's schedule — shown on the hero so
    it actively prompts the next action instead of waiting to be found on
@@ -1133,6 +1141,26 @@ function isTimeDueNow(timeStr) {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
 }
+
+/* Lighter warm-up for the day(s) before the real Day 1 starts — shorter,
+   more spread-out walks rather than the full six-item Day 1 block, but
+   the same fail → retry-in-20-min logic (that lives in markToiletTraining
+   and applies to any "walk" item regardless of which schedule it came
+   from) and the same water/feeding handling as Day 1. */
+const TOILET_TRAINING_WARMUP_SCHEDULE = [
+  { time: "15:00", label: "Afternoon Walk", type: "walk", duration: "5–7 min",
+    steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"] },
+  { time: "18:00", label: "Early Evening Walk", type: "walk", duration: "5–7 min",
+    steps: ["Boring, business-only trip", "Reward on the grass", "Water bowl lifted up the moment you're back inside"] },
+  { time: "18:30", label: "Dinner & water", type: "event",
+    steps: ["Water bowl back down", "Feed their single daily meal (slightly less — they've had sausage today)"] },
+  { time: "19:00", label: "Post-Dinner Walk", type: "walk", duration: "15 min",
+    steps: ["Out 30 min after eating — eating stimulates them", "Watch closely, reward poops instantly"] },
+  { time: "20:00", label: "Final water cutoff", type: "event",
+    steps: ["Water bowl up for the rest of the night"] },
+  { time: "21:00", label: "Final Night Walk", type: "walk", duration: "10 min",
+    steps: ["One last boring trip to empty their bladder before bed"] },
+];
 
 const TOILET_TRAINING_SCHEDULE = [
   { time: "09:00", label: "Morning Walk 1", type: "walk", duration: "10–15 min",
@@ -1153,6 +1181,16 @@ function ensureToiletTrainingToday(db) {
   const today = todayKey();
   if (db.toiletTraining.lastGeneratedDate === today) return;
   db.toiletTraining.lastGeneratedDate = today;
+
+  if (isBeforeToiletTrainingStart(db)) {
+    db.toiletTraining.items = TOILET_TRAINING_WARMUP_SCHEDULE.map((t, i) => ({
+      id: `warmup-${i}`, time: t.time, label: t.label, type: t.type,
+      duration: t.duration || null, steps: t.steps, status: null,
+    }));
+    saveDB(db);
+    return;
+  }
+
   const overrides = TOILET_TRAINING_OVERRIDES[toiletTrainingDayNumber(db)] || {};
   db.toiletTraining.items = TOILET_TRAINING_SCHEDULE.map((t, i) => {
     const ov = overrides[t.label] || {};
@@ -1234,23 +1272,41 @@ function resetToiletTraining(db) {
   saveDB(db);
 }
 
+/* Pushes the whole schedule back by one day — for mornings that don't go to
+   plan (missed the start, sick day, etc). Shifts from the current startDate
+   rather than from today, so tapping it more than once keeps stacking. */
+function postponeToiletTrainingStart(db) {
+  const d = new Date(db.toiletTraining.startDate + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  db.toiletTraining.startDate = todayKey(d);
+  db.toiletTraining.items = [];
+  db.toiletTraining.lastGeneratedDate = null;
+  saveDB(db);
+}
+
 function renderToiletTraining(db) {
   const wrap = document.getElementById("toiletTraining");
   if (!wrap) return;
   ensureToiletTrainingToday(db);
   const items = [...db.toiletTraining.items].sort((a, b) => a.time.localeCompare(b.time));
+  const warmup = isBeforeToiletTrainingStart(db);
   const dayNum = toiletTrainingDayNumber(db);
   const dayTips = TOILET_TRAINING_DAY_TIPS[dayNum];
+  const heading = warmup ? "🚽 Toilet training — warm-up (Day 1 starts tomorrow)" : `🚽 Toilet training — Day ${dayNum}`;
 
   wrap.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-      <h3 class="section-label" style="margin:0">🚽 Toilet training — Day ${dayNum}</h3>
-      <button class="link-btn" data-tt-reset>↺ Reset (back to Day 1)</button>
+      <h3 class="section-label" style="margin:0">${heading}</h3>
+      <span style="display:flex;gap:10px">
+        <button class="link-btn" data-tt-postpone>⏭ Push start back a day</button>
+        <button class="link-btn" data-tt-reset>↺ Reset (back to Day 1)</button>
+      </span>
     </div>
     <div class="card-list">${items.map(toiletTrainingItemHTML).join("")}</div>
     <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot.</p>
 
-    ${dayTips ? `
+    ${warmup ? `
+    <p class="view__sub" style="margin-top:14px">Just a light warm-up today — shorter walks, same reward-and-retry approach, water/dinner handled the same as Day 1. The real Day 1 schedule and tips kick in tomorrow.</p>` : dayTips ? `
     <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
       <strong>📋 Day ${dayNum} plan</strong>
       <p class="view__sub" style="margin:0;white-space:pre-line">${escapeHTML(dayTips)}</p>
