@@ -1062,6 +1062,65 @@ function applySeedAdditions(db) {
     db.appliedSeeds.projectShoppingLink = true;
   }
 
+  // Real build plans arrived for Kirsten's corner (added August 2026) —
+  // three measured cut-list plans (Shelving Unit, Work Storage Unit,
+  // Under-Table Split Storage Unit) replace the earlier rough zone
+  // descriptions with the actual units to build. Steps keep their "done"
+  // status where the wording matches exactly. Shopping list: the old
+  // vague lumber/rail placeholders are superseded by these real cut
+  // lists, so they're removed — anything ELSE on the list (including
+  // whatever she's added or ticked herself since) is left untouched.
+  if (!db.appliedSeeds.kirstensCornerRealBuildPlans) {
+    const corner = db.projects.find((p) => p.title === "Kirsten's corner");
+    if (corner) {
+      const newSteps = [
+        "Tidy the shelf — books stay, tidy sprays/decor/Fire Stick around them",
+        'Build the Shelving Unit (50"H x 36"L x 7.5"D) — fits under Shelf A, within the 37in wall span',
+        'Build the Work Storage Unit (55"H x 26"L x 6.5"D) — cubby/shelf storage for work clothes (jacket, laptop bag, rucksack, gym wear)',
+        'Build the Under-Table Split Storage Unit (up to 27"H x 36"L x 15"D) — open suitcase bay + shelves, fits under the table without blocking legroom',
+        "Fit the cloth drop-down door — tension rod/track + fabric panel",
+        "Move shoes to the under-bed box — flat clear box for everyday/work shoes, floor rack comes out",
+      ];
+      corner.steps = newSteps.map((title) => {
+        const old = corner.steps.find((s) => s.title === title);
+        return { title, done: old ? old.done : false };
+      });
+      corner.measurements =
+        "From the room sketch:\n" +
+        "• Shelf B (wardrobe/work-storage zone): wall-to-wall 37in, depth 12in\n" +
+        "• Shelf A (shelving-unit zone): wall-to-wall 39in\n" +
+        "• Table: length ~27in, wall-to-wall width 37in\n" +
+        "• Angled roof narrows to ~24in clearance above the table\n" +
+        "• Door: 7.5in wall-to-doorframe, opens inward\n" +
+        "• Shelf height: 55in from floor";
+    }
+
+    const list = db.shopping.lists.find((l) => l.title === "Kirsten's corner redesign");
+    if (list) {
+      const superseded = [
+        "Lumber/plywood — mini wardrobe frame (left side)",
+        "Wardrobe rail/rod + end brackets — mini wardrobe, left side",
+        "Lumber/plywood + compartment inserts — centre built-in unit (makeup, brushes, jewelry)",
+        "Lumber/plywood + dividers — under-table unit (hats, bags, paper)",
+      ];
+      list.items = list.items.filter((i) => !superseded.includes(i.text));
+      const needed = [
+        '3/4" plywood or 18mm MDF — panels for all 3 units (see each unit\'s cut list)',
+        "3mm hardboard — back panels",
+        '1 1/2" wood screws',
+        "Shelf pins (if going adjustable rather than fixed shelves)",
+        "Sandpaper — 120 and 240 grit",
+        "Paint or varnish",
+        "Edge banding",
+        "Rubber feet — 3 sets (one per unit)",
+      ];
+      needed.forEach((text) => {
+        if (!list.items.some((i) => i.text === text)) list.items.push({ id: uid(), text, done: false });
+      });
+    }
+    db.appliedSeeds.kirstensCornerRealBuildPlans = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
