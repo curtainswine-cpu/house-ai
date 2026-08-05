@@ -108,10 +108,6 @@ function render() {
   restBtn.setAttribute("aria-pressed", rest);
   restBtn.textContent = rest ? "🌙 Rest day: on" : "🌙 Rest day";
   document.getElementById("view-today").classList.toggle("is-rest", rest);
-  document.getElementById("restBanner").innerHTML = rest
-    ? `<div class="rest-banner">🌙 <strong>Rest day.</strong> Nothing's expected of you today.
-       Tick things only if you genuinely want to.</div>`
-    : "";
 
   // Mini missions page — calm status line for your personal tasks
   const prog = todayProgress(DB);
@@ -664,6 +660,7 @@ function wireEvents() {
       const [itemId, status] = ttMark.dataset.ttMark.split("|");
       markToiletTraining(DB, itemId, status); render(); return;
     }
+    if (e.target.closest("[data-tt-reset]")) { resetToiletTraining(DB); render(); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");

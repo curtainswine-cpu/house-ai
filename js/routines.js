@@ -1204,6 +1204,18 @@ function toiletTrainingItemHTML(item) {
     </article>`;
 }
 
+/* Wipes the schedule/day-counter back to a clean Day 1 — for when she's
+   been testing the buttons rather than actually running the plan. Only
+   touches the schedule state, not her own notes (typed content, not a
+   "test") and not XP (already mixed in with real actions across all the
+   pet-care features, not cleanly separable to "just this"). */
+function resetToiletTraining(db) {
+  db.toiletTraining.items = [];
+  db.toiletTraining.lastGeneratedDate = null;
+  db.toiletTraining.startDate = todayKey();
+  saveDB(db);
+}
+
 function renderToiletTraining(db) {
   const wrap = document.getElementById("toiletTraining");
   if (!wrap) return;
@@ -1213,7 +1225,10 @@ function renderToiletTraining(db) {
   const dayTips = TOILET_TRAINING_DAY_TIPS[dayNum];
 
   wrap.innerHTML = `
-    <h3 class="section-label">🚽 Toilet training — Day ${dayNum}</h3>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+      <h3 class="section-label" style="margin:0">🚽 Toilet training — Day ${dayNum}</h3>
+      <button class="link-btn" data-tt-reset>↺ Reset (back to Day 1)</button>
+    </div>
     <div class="card-list">${items.map(toiletTrainingItemHTML).join("")}</div>
     <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot.</p>
 
