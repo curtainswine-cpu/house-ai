@@ -1074,11 +1074,15 @@ function toggleClaw(db, petId, clawKey) {
    Auto-advances from startDate so this never needs manual correction as
    the days pass. */
 const TOILET_TRAINING_DAY_TIPS = {
-  1: "Day 1 — building the routine:\n" +
-     "• Straight outside for every scheduled walk — no lounging, no phones first.\n" +
+  1: "Day 1 — revised after today's accidents:\n" +
+     "• Morning Walk 1 shifts to a 9:30–10:00am window, and must happen within 30–60 minutes of you waking (keeps it flexible if illness shifts your wake time) — protects Oddie (can't hold his morning poo past ~10:30) and Effie (had a morning wee accident).\n" +
+     "• Midday Walk 2 stays 1:00pm — keeps the afternoon bladder window tight, prevents mid-afternoon accidents.\n" +
+     "• Dinner moves earlier to 6:00pm (was 6:30pm) — Effie's evening accident happened around 6:20pm, so earlier dinner buys more time before the post-dinner walk. Water stays down until 8pm.\n" +
+     "• Final water cutoff at 8pm protects against Effie's evening wee accidents.\n" +
+     "• No luck after 10 min? Bring them in, lead attached nearby, try again in 20 minutes (the app adds that retry for you automatically).\n" +
      "• Be boring at the grass: stand still, no chat, no play.\n" +
      "• Reward the instant they go — sausage + enthusiastic praise.\n" +
-     "• No luck after 10 min? Bring them in, lead attached nearby, try again in 20 minutes (the app adds that retry for you automatically).",
+     "• Accident → straight outside for a 2-minute reset walk.",
   2: "Day 2 changes:\n" +
      "• Open one extra room (e.g. bedroom + hallway) to test if they'll hold it or sneak off.\n" +
      "• Watch for \"the ask\" around 12:55pm / 6:25pm — staring, standing by the door, waking from a nap.\n" +
@@ -1114,6 +1118,10 @@ const TOILET_TRAINING_DAY_TIPS = {
    introducing an actual new walk slot doesn't need a separate schedule
    template, just an override on the existing "Midday Walk 2" entry. */
 const TOILET_TRAINING_OVERRIDES = {
+  1: {
+    "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Dinner & water": { time: "18:00" },
+  },
   5: { "Morning Walk 1": { time: "08:30" } },
   6: { "Morning Walk 1": { time: "07:45" } },
   7: {

@@ -1121,6 +1121,23 @@ function applySeedAdditions(db) {
     db.appliedSeeds.kirstensCornerRealBuildPlans = true;
   }
 
+  // Day 1 toilet training schedule revised (added August 2026) — after
+  // Oddie's morning poo timing and Effie's morning/evening accidents,
+  // Morning Walk 1 moves to a 9:30-10:00am window and dinner moves to
+  // 6pm. Added as a proper TOILET_TRAINING_OVERRIDES[1] entry so it
+  // applies automatically to any future regeneration, but today's Day 1
+  // items were already generated under the old un-overridden times —
+  // patch them directly here too, and only if she hasn't already logged
+  // them, so nothing already ticked today gets disturbed.
+  if (!db.appliedSeeds.day1RevisedSchedule) {
+    const items = db.toiletTraining.items || [];
+    const morning = items.find((i) => i.label === "Morning Walk 1" && i.status === null);
+    if (morning) { morning.time = "09:30"; morning.label = "Morning Walk 1 (9:30–10:00am window)"; }
+    const dinner = items.find((i) => i.label === "Dinner & water" && i.status === null);
+    if (dinner) dinner.time = "18:00";
+    db.appliedSeeds.day1RevisedSchedule = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
