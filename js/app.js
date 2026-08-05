@@ -126,6 +126,7 @@ function render() {
   renderShiftBanner(DB);
   renderCharacterPanel(DB);  // Home hero: character + level + Health/Hygiene/Appearance
   renderPetsPage(DB);        // Pets: Effie & Oddie's own profiles
+  renderToiletTraining(DB);  // Pets: shared toilet-training schedule
   renderTodayCalendar(DB);
   renderFullCalendar(DB);
   renderHomeNav(DB);
@@ -657,6 +658,11 @@ function wireEvents() {
     if (petClaw) {
       const [petId, clawKey] = petClaw.dataset.petClaw.split("|");
       toggleClaw(DB, petId, clawKey); render(); return;
+    }
+    const ttMark = e.target.closest("[data-tt-mark]");
+    if (ttMark) {
+      const [itemId, status] = ttMark.dataset.ttMark.split("|");
+      markToiletTraining(DB, itemId, status); render(); return;
     }
 
     // Cleaning: log a full room clean

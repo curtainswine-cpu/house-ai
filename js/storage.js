@@ -225,6 +225,12 @@ function defaultData() {
       },
     },
 
+    // Toilet training — one shared schedule for both dogs together (not
+    // per-dog), regenerated fresh each day from TOILET_TRAINING_SCHEDULE.
+    // A failed walk auto-adds a retry 20 minutes later rather than just
+    // marking it failed and moving on.
+    toiletTraining: { lastGeneratedDate: null, items: [], notes: "" },
+
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -304,6 +310,8 @@ function normalize(db) {
     if (!db.petCare.fleaWorm[p.id]) db.petCare.fleaWorm[p.id] = { lastDone: null };
     if (!db.petCare.claws[p.id]) db.petCare.claws[p.id] = { done: {}, cyclesCompleted: 0 };
   });
+  if (!db.toiletTraining) db.toiletTraining = { lastGeneratedDate: null, items: [] };
+  if (typeof db.toiletTraining.notes !== "string") db.toiletTraining.notes = "";
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
@@ -846,6 +854,18 @@ function applySeedAdditions(db) {
       });
     }
     db.appliedSeeds.petFlavour = true;
+  }
+
+  // Today's toilet-training notes, seeded once as a starting point (added
+  // August 2026) — this field is hers to edit/replace each day as the
+  // plan evolves, not something re-seeded going forward.
+  if (!db.appliedSeeds.toiletTrainingDay2Notes) {
+    db.toiletTraining.notes =
+      "Day 2 changes:\n" +
+      "• Open one extra room (e.g. bedroom + hallway) to test if they'll hold it or sneak off.\n" +
+      "• Watch for \"the ask\" around 12:55pm / 6:25pm — staring, standing by the door, waking from a nap.\n" +
+      "• Vary the reward — don't sausage a lazy dribble; save the big rewards for poops or a full first-morning-walk empty.";
+    db.appliedSeeds.toiletTrainingDay2Notes = true;
   }
 
   // Real birthdates for both of you (added August 2026) — ages computed

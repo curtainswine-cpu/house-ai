@@ -1058,6 +1058,124 @@ function toggleClaw(db, petId, clawKey) {
   saveDB(db);
 }
 
+/* ---- Toilet training — one shared schedule for both dogs (added while
+   she's off on sick leave working the plan with them). Regenerated fresh
+   each day from this template. A failed walk doesn't just get marked and
+   dropped — it auto-adds a retry 20 minutes later, chaining again if that
+   one fails too, per her explicit instruction. ---- */
+const TOILET_TRAINING_SCHEDULE = [
+  { time: "09:00", label: "Morning Walk 1", type: "walk", duration: "10–15 min",
+    steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"] },
+  { time: "13:00", label: "Midday Walk 2", type: "walk", duration: "15 min",
+    steps: ["Boring, business-only trip", "Reward on the grass", "Water bowl lifted up the moment you're back inside"] },
+  { time: "18:30", label: "Dinner & water", type: "event",
+    steps: ["Water bowl back down", "Feed their single daily meal (slightly less — they've had sausage today)"] },
+  { time: "19:00", label: "Post-Dinner Walk 3", type: "walk", duration: "15 min",
+    steps: ["Out 30 min after eating — eating stimulates them", "Watch closely, reward poops instantly"] },
+  { time: "20:00", label: "Final water cutoff", type: "event",
+    steps: ["Water bowl up for the rest of the night"] },
+  { time: "21:00", label: "Final Night Walk 4", type: "walk", duration: "10 min",
+    steps: ["One last boring trip to empty their bladder before bed"] },
+];
+
+function ensureToiletTrainingToday(db) {
+  const today = todayKey();
+  if (db.toiletTraining.lastGeneratedDate === today) return;
+  db.toiletTraining.lastGeneratedDate = today;
+  db.toiletTraining.items = TOILET_TRAINING_SCHEDULE.map((t, i) => ({
+    id: `base-${i}`, time: t.time, label: t.label, type: t.type,
+    duration: t.duration || null, steps: t.steps, status: null,
+  }));
+  saveDB(db);
+}
+
+/* Success/fail both earn something — trying counts, per the app's usual
+   no-guilt rule — success just earns more. Credits both dogs equally
+   (the plan treats them as a pair) plus the acting person's own level,
+   once, not doubled per dog. */
+function markToiletTraining(db, itemId, status) {
+  const item = db.toiletTraining.items.find((i) => i.id === itemId);
+  if (!item) return;
+  item.status = status;
+
+  if (item.type === "walk") {
+    const amt = status === "success" ? 8 : 3;
+    db.pets.forEach((p) => {
+      db.petCare.xp[p.id] = (db.petCare.xp[p.id] || 0) + amt;
+      const key = `${db.activePerson}|${p.id}`;
+      db.petCare.companionship[key] = (db.petCare.companionship[key] || 0) + amt;
+    });
+    awardXp(db, db.activePerson, amt);
+
+    if (status === "fail") {
+      const [h, m] = item.time.split(":").map(Number);
+      const total = h * 60 + m + 20;
+      const retryTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+      db.toiletTraining.items.push({
+        id: uid(), time: retryTime, label: item.label.replace(/ \(retry\)$/, "") + " (retry)",
+        type: "walk", duration: item.duration, steps: item.steps, status: null,
+      });
+    }
+  } else {
+    awardXp(db, db.activePerson, 3);
+  }
+  saveDB(db);
+}
+
+function toiletTrainingItemHTML(item) {
+  const stepsHTML = (item.steps || []).length
+    ? `<ul class="steps">${item.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : "";
+  let actions;
+  if (item.status === "success") {
+    actions = `<span class="tag" style="background:var(--accent-soft);color:var(--accent);border-color:transparent">✓ Success</span>`;
+  } else if (item.status === "fail") {
+    actions = `<span class="tag">✗ No luck — retry added below</span>`;
+  } else if (item.type === "walk") {
+    actions = `<button class="btn btn--mini" data-tt-mark="${item.id}|success">✓ Success</button>
+               <button class="btn btn--mini btn--quiet" data-tt-mark="${item.id}|fail">✗ No luck</button>`;
+  } else {
+    actions = `<button class="btn btn--mini" data-tt-mark="${item.id}|success">✓ Done</button>`;
+  }
+  return `
+    <article class="card" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <strong>${formatTime12(item.time)} — ${escapeHTML(item.label)}</strong>
+        ${item.duration ? `<span class="tag tag--time">${escapeHTML(item.duration)}</span>` : ""}
+      </div>
+      ${stepsHTML}
+      <div class="glance__actions">${actions}</div>
+    </article>`;
+}
+
+function renderToiletTraining(db) {
+  const wrap = document.getElementById("toiletTraining");
+  if (!wrap) return;
+  ensureToiletTrainingToday(db);
+  const items = [...db.toiletTraining.items].sort((a, b) => a.time.localeCompare(b.time));
+  wrap.innerHTML = `
+    <h3 class="section-label">🚽 Toilet training — today's schedule</h3>
+    <div class="card-list">${items.map(toiletTrainingItemHTML).join("")}</div>
+    <p class="view__sub" style="margin-top:8px">Between walks: keep them relaxing with you and ignore sniffing/circling — if you spot it, break the schedule and go straight out instead of waiting for the next slot.</p>
+
+    <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
+      <strong>🧼 If there's an accident</strong>
+      <ul class="steps">
+        <li>Don't react — no scolding, clapping, or loud noise</li>
+        <li>Move them calmly to the bathroom while you clean</li>
+        <li>Clean immediately with the enzymatic solution so the smell is gone within minutes</li>
+        <li>Tighten restrictions — back to one room for the rest of the afternoon; they're just not ready for the extra freedom yet</li>
+      </ul>
+    </div>
+
+    <div class="field" style="margin-top:14px">
+      <label for="ttNotes">Today's notes</label>
+      <textarea id="ttNotes" rows="4" placeholder="Anything specific to today's plan…">${escapeHTML(db.toiletTraining.notes || "")}</textarea>
+    </div>`;
+
+  const notesEl = document.getElementById("ttNotes");
+  if (notesEl) notesEl.onblur = () => { db.toiletTraining.notes = notesEl.value; saveDB(db); };
+}
+
 function petLevel(db, petId) {
   const xp = db.petCare.xp[petId] || 0;
   return { level: Math.floor(xp / PET_XP_PER_LEVEL), into: xp % PET_XP_PER_LEVEL, span: PET_XP_PER_LEVEL, xp };
