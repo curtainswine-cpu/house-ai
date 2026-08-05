@@ -1017,6 +1017,16 @@ function applySeedAdditions(db) {
     db.appliedSeeds.kirstensCornerRedesign = true;
   }
 
+  // Tag "Sort the laundry system" to the Living Room (added August 2026) —
+  // that's where the clothes actually back up, so it now shows under that
+  // room's Projects tab instead of being the one un-roomed project.
+  if (!db.appliedSeeds.laundryProjectRoomTag) {
+    const livingRoomId = (db.cleaningGame.rooms.find((r) => r.name === "Living Room") || {}).id;
+    const laundry = db.projects.find((p) => p.title === "Sort the laundry system");
+    if (laundry && livingRoomId) laundry.room = livingRoomId;
+    db.appliedSeeds.laundryProjectRoomTag = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
