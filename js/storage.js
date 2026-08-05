@@ -873,6 +873,28 @@ function applySeedAdditions(db) {
     db.appliedSeeds.toiletTrainingDayCounterFix = true;
   }
 
+  // New bedding order (added August 2026) — old mattress needs disposing
+  // of, plain pillowcases and sheets needed to go with the new bedding
+  // sets. "Sort bedding into sets for under-bed storage" already exists
+  // as a Bedroom task, so not duplicated here.
+  if (!db.appliedSeeds.newBeddingOrder) {
+    const bits = db.shopping.lists.find((l) => l.title === "Bits for the house") || db.shopping.lists[0];
+    if (bits) {
+      bits.items.push(
+        { id: uid(), text: "Pillow cases (plain) — ~5 pairs", done: false },
+        { id: uid(), text: "Bed sheets — at least 4", done: false },
+      );
+    }
+    const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
+    if (bedroomId) {
+      db.routines.push({
+        id: uid(), title: "Dispose of old mattress", area: "cleaning", room: bedroomId,
+        assignedTo: "either", timeOfDay: "anytime", repeat: "once", steps: [],
+      });
+    }
+    db.appliedSeeds.newBeddingOrder = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
