@@ -1087,7 +1087,7 @@ function applySeedAdditions(db) {
       });
       corner.measurements =
         "From the room sketch:\n" +
-        "• Shelf B (wardrobe/work-storage zone): wall-to-wall 37in, depth 12in\n" +
+        "• Shelf B (Work Storage Unit zone — shelves only, no hanging rail): wall-to-wall 37in, depth 12in\n" +
         "• Shelf A (shelving-unit zone): wall-to-wall 39in\n" +
         "• Table: length ~27in, wall-to-wall width 37in\n" +
         "• Angled roof narrows to ~24in clearance above the table\n" +
