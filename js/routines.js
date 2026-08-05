@@ -149,9 +149,15 @@ function toggleDone(db, routineId, dateKey) {
   saveDB(db);
 }
 
-/* Chore XP — a bigger one-off (declutter/deep-clean) job earns more than a
-   quick recurring tick, same split as the room time-estimate. */
-function choreXpForRoutine(r) { return r.repeat === "once" ? 10 : 5; }
+/* Chore XP — picked explicitly per job at creation time (see the intensity
+   chips in openRoutineModal) rather than guessed from repeat frequency.
+   Jobs created before intensity existed fall back to the old flat rule. */
+const CLEANING_INTENSITY_XP = { light: 5, medium: 10, hard: 20, intensive: 35 };
+const CLEANING_INTENSITY_LABEL = { light: "Light", medium: "Medium", hard: "Hard", intensive: "Intensive" };
+function choreXpForRoutine(r) {
+  if (r.intensity && CLEANING_INTENSITY_XP[r.intensity] != null) return CLEANING_INTENSITY_XP[r.intensity];
+  return r.repeat === "once" ? 10 : 5;
+}
 
 /* ---- Follow-up rules: completing certain jobs quietly creates the next
    one, so she doesn't have to remember to add it herself. A small named

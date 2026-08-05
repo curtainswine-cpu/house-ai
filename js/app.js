@@ -225,6 +225,7 @@ function openRoomModal(roomId) {
       <textarea id="roomNotes" rows="2" placeholder="Anything worth remembering about this room…">${escapeHTML(room.notes || "")}</textarea>
     </div>
     <div style="margin-top:14px">${tasksHTML}</div>
+    <button class="btn btn--ghost btn--block" style="margin-top:10px" data-add-room-job="${room.id}">+ Add a job for this room</button>
   `);
   _openRoomId = roomId;
 
@@ -239,13 +240,14 @@ function openRoomModal(roomId) {
    existing = routine to edit; presetArea = "me"|"cleaning"|"household";
    presetTimeOfDay = "morning"|"afternoon"|"evening"|"anytime" (for band + buttons)
    presetPerson = person id to pre-assign to (e.g. "jack" when allocating from Kirsten's view) */
-function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
+function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson, presetRoom) {
   const r = existing || {
     timeOfDay: presetTimeOfDay || "morning", repeat: "daily", steps: [], time: "",
     assignedTo: presetPerson || ((presetArea && presetArea !== "me") ? "either" : DB.activePerson),
     area: presetArea || "me",
   };
   const isEdit = !!existing;
+  const room = isEdit ? r.room : presetRoom;
 
   const peopleOpts = [
     `<option value="either"${r.assignedTo === "either" ? " selected" : ""}>Either of us</option>`,
@@ -255,6 +257,10 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
 
   const areaChips = [["me","Mine"],["cleaning","Cleaning"],["household","Household"]]
     .map(([val,label]) => `<button class="chip" data-area="${val}" aria-pressed="${(r.area || "me") === val}">${label}</button>`).join("");
+
+  const intensityChips = Object.keys(CLEANING_INTENSITY_XP).map((val) =>
+    `<button class="chip" data-intensity="${val}" aria-pressed="${(r.intensity || "medium") === val}">${CLEANING_INTENSITY_LABEL[val]} (${CLEANING_INTENSITY_XP[val]} XP)</button>`).join("");
+  const showIntensity = (r.area || "me") === "cleaning" || (r.area || "me") === "household";
 
   const timeChips = ["morning","afternoon","evening","anytime"].map((t) =>
     `<button class="chip" data-time="${t}" aria-pressed="${r.timeOfDay === t}">${TIME_LABEL[t]}</button>`).join("");
@@ -266,7 +272,8 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
   const repeatChips = repeatOptions
     .map(([val,label]) => `<button class="chip" data-repeat="${val}" aria-pressed="${r.repeat === val}">${label}</button>`).join("");
 
-  openModal(isEdit ? "Edit routine" : "New routine", `
+  const roomObj = room ? DB.cleaningGame.rooms.find((x) => x.id === room) : null;
+  openModal(isEdit ? "Edit routine" : (roomObj ? `New job — ${roomObj.icon || "🏠"} ${roomObj.name}` : "New routine"), `
     <div class="field">
       <label for="rTitle">What is it?</label>
       <input id="rTitle" placeholder="e.g. Evening kitchen reset" value="${escapeAttr(r.title || "")}" />
@@ -275,6 +282,11 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
       <label>What kind?</label>
       <div class="chip-row" id="rArea">${areaChips}</div>
       <small style="color:var(--muted)">Mine = personal (shows on Home). Cleaning / Household = shared (in the Cleaning tab).</small>
+    </div>
+    <div class="field" id="rIntensityWrap" ${showIntensity ? "" : "hidden"}>
+      <label>How much of a job is it?</label>
+      <div class="chip-row" id="rIntensity">${intensityChips}</div>
+      <small style="color:var(--muted)">Sets how much XP it earns when ticked off.</small>
     </div>
     <div class="field">
       <label for="rWho">Who does it?</label>
@@ -327,11 +339,16 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
     ${isEdit ? `<button class="btn btn--danger btn--block" id="rDelete">Delete this routine</button>` : ""}
   `);
 
-  let time = r.timeOfDay, repeat = r.repeat, area = r.area || "me";
+  let time = r.timeOfDay, repeat = r.repeat, area = r.area || "me", intensity = r.intensity || "medium";
 
   document.getElementById("rArea").onclick = (e) => {
     const b = e.target.closest("[data-area]"); if (!b) return;
     area = b.dataset.area; pressOne("rArea", b);
+    document.getElementById("rIntensityWrap").hidden = !(area === "cleaning" || area === "household");
+  };
+  document.getElementById("rIntensity").onclick = (e) => {
+    const b = e.target.closest("[data-intensity]"); if (!b) return;
+    intensity = b.dataset.intensity; pressOne("rIntensity", b);
   };
   document.getElementById("rTime").onclick = (e) => {
     const b = e.target.closest("[data-time]"); if (!b) return;
@@ -365,6 +382,8 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson) {
       },
       time: null, // cleared when timeVariants takes over
     };
+    if (area === "cleaning" || area === "household") patch.intensity = intensity;
+    if (!isEdit && presetRoom) patch.room = presetRoom;
     if (isEdit) Object.assign(r, patch);
     else DB.routines.push(Object.assign({ id: uid() }, patch));
     saveDB(DB);
@@ -593,6 +612,9 @@ function wireEvents() {
       if (routine) openRoutineModal(routine);
       return;
     }
+
+    const addRoomJob = e.target.closest("[data-add-room-job]");
+    if (addRoomJob) { openRoutineModal(null, "cleaning", null, null, addRoomJob.dataset.addRoomJob); return; }
 
     // Edit a project
     const editP = e.target.closest("[data-edit-project]");
