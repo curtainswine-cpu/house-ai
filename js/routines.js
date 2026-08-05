@@ -1105,6 +1105,20 @@ function toiletTrainingDayNumber(db) {
   return Math.max(1, daysBetween(new Date(db.toiletTraining.startDate + "T00:00:00"), new Date()) + 1);
 }
 
+/* The next not-yet-marked item in today's schedule — shown on the hero so
+   it actively prompts the next action instead of waiting to be found on
+   the Pets page. */
+function toiletTrainingCurrentStep(db) {
+  ensureToiletTrainingToday(db);
+  const items = [...db.toiletTraining.items].sort((a, b) => a.time.localeCompare(b.time));
+  return items.find((i) => i.status === null) || null;
+}
+function isTimeDueNow(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
+}
+
 const TOILET_TRAINING_SCHEDULE = [
   { time: "09:00", label: "Morning Walk 1", type: "walk", duration: "10–15 min",
     steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"] },
@@ -1413,6 +1427,8 @@ function characterPanelHTML(db, personId) {
       </button>`;
   };
 
+  const ttStep = isKirsten ? toiletTrainingCurrentStep(db) : null;
+
   const petBars = db.pets.map((pet) => {
     const val = companionshipPct(db, personId, pet.id);
     return `
@@ -1440,6 +1456,10 @@ function characterPanelHTML(db, personId) {
         <div class="hero-char__level">
           <button class="hero-char__schedule" data-goto="calendar">${heroScheduleSummary(db, personId)}</button>
           ${!isKirsten && typeof liftBlockForJack === "function" ? liftBlockForJack(db) : ""}
+          ${ttStep ? `
+            <button class="hero-char__schedule" data-goto="pets">
+              🚽 ${isTimeDueNow(ttStep.time) ? `<span class="hero-stat__due"></span> Due now — ` : "Next: "}${formatTime12(ttStep.time)} ${escapeHTML(ttStep.label)}
+            </button>` : ""}
           <div class="hero-char__level-row">${escapeHTML(person.name)}${ageFromBirthdate(person.birthdate) != null ? ` · ${ageFromBirthdate(person.birthdate)}` : ""} · Level ${lvl.level}</div>
           <div class="bar"><div class="bar__fill bar__fill--gold" style="width:${pctLvl}%"></div></div>
           <div class="hero-char__level-sub">${lvl.into} / ${lvl.span} XP</div>
