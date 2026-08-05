@@ -868,6 +868,18 @@ function applySeedAdditions(db) {
     db.appliedSeeds.toiletTrainingDay2Notes = true;
   }
 
+  // Day 3 supersedes the Day 2 notes above (added August 2026) — separation
+  // practice: Safe Zone confinement, ghost departures, variable reward.
+  if (!db.appliedSeeds.toiletTrainingDay3Notes) {
+    db.toiletTraining.notes =
+      "Day 3 — teaching them to cope alone in their Safe Zone:\n" +
+      "• 1:15pm: Safe Zone confinement — tiled/carpet-free area only, no sofa, no following you. Give each a safe chew or a frozen Kong stuffed with a tiny bit of wet food/plain yoghurt — keeps them busy the first 20 min and the licking soothes them to sleep. Close the door.\n" +
+      "• Ghost departures: coat + keys, step outside 5–10 min during the afternoon stretch, prove the routine holds even when you leave the flat.\n" +
+      "• Sausage roulette: reward 2 of 3 successful trips with sausage, just verbal praise for the third — variable reward makes it stronger.\n" +
+      "• Whining at the Safe Zone door: ignore completely, no talking/opening/scolding. Wait for 2 full minutes of silence before checking on them.";
+    db.appliedSeeds.toiletTrainingDay3Notes = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
