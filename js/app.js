@@ -187,10 +187,16 @@ function closeModal() {
 }
 
 /* ---------- Room detail (tap a room on the blueprint) ---------- */
+// Which of the room modal's two tabs is showing — reset to "cleaning"
+// whenever a DIFFERENT room is opened, but kept as-is while the same
+// room's modal is just being live-refreshed (see render()'s _openRoomId hook).
+let _roomModalTab = "cleaning";
 function openRoomModal(roomId) {
   const room = DB.cleaningGame.rooms.find((r) => r.id === roomId);
   if (!room) return;
+  if (_openRoomId !== roomId) _roomModalTab = "cleaning";
   const dateKey = todayKey();
+
   const allTasks = DB.routines.filter((r) => r.room === roomId && isSharedTask(r));
   const groups = [["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["once", "One-off / deep clean"]];
   const grouped = groups.map(([key, label]) => {
@@ -199,12 +205,30 @@ function openRoomModal(roomId) {
     return `<div class="time-group">${label}</div>` +
       list.map((r) => routineCardHTML(DB, r, dateKey, { compact: true, editable: true })).join("");
   }).join("");
-  // Some rooms' work lives in a Project (staged, one-step-at-a-time) rather
-  // than a flat task list — point to it instead of saying "no jobs".
-  const linkedProject = DB.projects.find((p) => p.title.toLowerCase().includes(room.name.toLowerCase()));
-  const tasksHTML = grouped || (linkedProject
-    ? `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">📋 This room's work is tracked as a project — "${escapeHTML(linkedProject.title)}" in Mini missions / Routines → Projects.</p>`
-    : `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">No jobs added for this room yet.</p>`);
+  const cleaningTabHTML = `
+    <div style="margin-top:14px">${grouped || `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">No jobs added for this room yet.</p>`}</div>
+    <button class="btn btn--ghost btn--block" style="margin-top:10px" data-add-room-job="${room.id}">+ Add a job for this room</button>`;
+
+  const roomProjects = DB.projects.filter((p) => p.room === roomId);
+  const projectCardHTML = (p) => {
+    const prog = projectProgress(p);
+    const done = isProjectComplete(p);
+    return `
+      <article class="card">
+        <div class="card__main">
+          <div class="card__title">${p.emoji || "📋"} ${escapeHTML(p.title)}</div>
+          <div class="card__meta">
+            <span class="tag ${done ? "tag--time" : ""}">${prog.done}/${prog.total}${done ? " · done 🎉" : ""}</span>
+          </div>
+        </div>
+        <button class="icon-btn" data-edit-project="${p.id}" aria-label="Edit project">✎</button>
+      </article>`;
+  };
+  const projectsTabHTML = `
+    <div style="margin-top:14px">${roomProjects.length
+      ? roomProjects.map(projectCardHTML).join("")
+      : `<p style="color:var(--muted);font-size:.88rem;margin:8px 0 0">No projects for this room yet.</p>`}</div>
+    <button class="btn btn--ghost btn--block" style="margin-top:10px" data-add-room-project="${room.id}">+ Add a project for this room</button>`;
 
   const prog = roomProgress(DB, roomId);
   const progressText = prog.total
@@ -224,8 +248,11 @@ function openRoomModal(roomId) {
       <label for="roomNotes">Notes</label>
       <textarea id="roomNotes" rows="2" placeholder="Anything worth remembering about this room…">${escapeHTML(room.notes || "")}</textarea>
     </div>
-    <div style="margin-top:14px">${tasksHTML}</div>
-    <button class="btn btn--ghost btn--block" style="margin-top:10px" data-add-room-job="${room.id}">+ Add a job for this room</button>
+    <div class="chip-row" style="margin-top:14px">
+      <button class="chip" data-room-tab="cleaning" aria-pressed="${_roomModalTab === "cleaning"}">🧹 Cleaning</button>
+      <button class="chip" data-room-tab="projects" aria-pressed="${_roomModalTab === "projects"}">📋 Projects</button>
+    </div>
+    ${_roomModalTab === "cleaning" ? cleaningTabHTML : projectsTabHTML}
   `);
   _openRoomId = roomId;
 
@@ -401,10 +428,11 @@ function openRoutineModal(existing, presetArea, presetTimeOfDay, presetPerson, p
 }
 
 /* ---------- Create / edit a project ---------- */
-function openProjectModal(existing) {
+function openProjectModal(existing, presetRoom) {
   const p = existing || { emoji: "", title: "", steps: [] };
   const isEdit = !!existing;
-  openModal(isEdit ? "Edit project" : "New project", `
+  const roomObj = (!isEdit && presetRoom) ? DB.cleaningGame.rooms.find((x) => x.id === presetRoom) : null;
+  openModal(isEdit ? "Edit project" : (roomObj ? `New project — ${roomObj.icon || "🏠"} ${roomObj.name}` : "New project"), `
     <div class="field">
       <label for="pEmoji">Icon (optional)</label>
       <input id="pEmoji" maxlength="2" placeholder="🧺" value="${escapeAttr(p.emoji || "")}" style="max-width:90px" />
@@ -429,7 +457,7 @@ function openProjectModal(existing) {
       stepTitles: document.getElementById("pSteps").value.split("\n").map((s) => s.trim()).filter(Boolean),
     };
     if (isEdit) updateProject(DB, p.id, data);
-    else createProject(DB, data);
+    else createProject(DB, Object.assign(data, { room: presetRoom || null }));
     closeModal();
     render();
   };
@@ -615,6 +643,12 @@ function wireEvents() {
 
     const addRoomJob = e.target.closest("[data-add-room-job]");
     if (addRoomJob) { openRoutineModal(null, "cleaning", null, null, addRoomJob.dataset.addRoomJob); return; }
+
+    const addRoomProject = e.target.closest("[data-add-room-project]");
+    if (addRoomProject) { openProjectModal(null, addRoomProject.dataset.addRoomProject); return; }
+
+    const roomTab = e.target.closest("[data-room-tab]");
+    if (roomTab) { _roomModalTab = roomTab.dataset.roomTab; openRoomModal(_openRoomId); return; }
 
     // Edit a project
     const editP = e.target.closest("[data-edit-project]");

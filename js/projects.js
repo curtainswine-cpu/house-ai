@@ -29,11 +29,12 @@ function completeNextStep(db, projectId) {
 }
 
 /* Create / update / delete whole projects. */
-function createProject(db, { emoji, title, stepTitles }) {
+function createProject(db, { emoji, title, stepTitles, room }) {
   db.projects.push({
     id: uid(),
     emoji: emoji || "📋",
     title,
+    room: room || null,
     steps: stepTitles.map((t) => ({ title: t, done: false })),
   });
   saveDB(db);

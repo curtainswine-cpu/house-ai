@@ -929,6 +929,85 @@ function applySeedAdditions(db) {
     db.appliedSeeds.toiletTrainingWarmup1215 = true;
   }
 
+  // Bedroom organising jobs (added August 2026) — recurring cleaning/
+  // organise jobs for specific bedroom spots, each with its own XP
+  // intensity. "Clean under bed" is marked done today since she'd already
+  // just done it and asked for it to be checked monthly from here —
+  // everything else starts due now and she ticks it off as she gets to it.
+  if (!db.appliedSeeds.bedroomOrganisingJobs) {
+    const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
+    if (bedroomId) {
+      const anchor = todayKey();
+      const J = (title, repeat, intensity, extra) => Object.assign({
+        id: uid(), title, area: "cleaning", room: bedroomId, assignedTo: "either",
+        timeOfDay: "anytime", repeat, intensity, steps: [],
+      }, extra || {});
+
+      const underBed = J("Clean under bed", "monthly", "medium", { anchorDate: anchor });
+      db.routines.push(underBed);
+      db.completions[`${underBed.id}|${anchor}`] = true;
+      awardXp(db, "kirsten", choreXpForRoutine(underBed));
+
+      const jobs = [
+        J("Clean dressing table", "weekly", "light", { repeatDay: 0 }),
+        J("Clean bedside drawer", "weekly", "light", { repeatDay: 0 }),
+        J("Organise bedside drawer", "monthly", "light", { anchorDate: anchor }),
+        J("Organise underwear drawer", "monthly", "light", { anchorDate: anchor }),
+        J("Organise dressing table drawer 1", "monthly", "light", { anchorDate: anchor }),
+        J("Organise dressing table drawer 2", "monthly", "light", { anchorDate: anchor }),
+        J("Organise dressing table drawer 3", "monthly", "light", { anchorDate: anchor }),
+        J("Organise dressing table large drawer", "monthly", "medium", { anchorDate: anchor }),
+        J("Organise dressing table mirror cabinet", "monthly", "light", { anchorDate: anchor }),
+        J("Organise dressing table shelves", "monthly", "medium", { anchorDate: anchor }),
+        ...Array.from({ length: 8 }, (_, i) => J(`Organise bookshelf ${i + 1}`, "monthly", "light", { anchorDate: anchor })),
+      ];
+      jobs.forEach((r) => db.routines.push(r));
+
+      db.appliedSeeds.bedroomOrganisingJobs = true;
+    }
+  }
+
+  // Kirsten's corner redesign plan (added August 2026) — replaces the
+  // generic 7-step decluttering plan with her actual zone-by-zone design,
+  // and tags the project to the Bedroom so it shows under that room's new
+  // Projects tab. Loft reorganisation gets the same room-tagging (just
+  // needed a room id, no rewrite).
+  if (!db.appliedSeeds.kirstensCornerRedesign) {
+    const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
+    const loftId = (db.cleaningGame.rooms.find((r) => r.name === "Loft") || {}).id;
+
+    const corner = db.projects.find((p) => p.title === "Kirsten's corner");
+    if (corner) {
+      corner.room = bedroomId || null;
+      corner.steps = [
+        { title: "Tidy the shelf — books stay, tidy sprays/decor/Fire Stick around them", done: false },
+        { title: "Fit the drop-down cloth door (left side) — tension rod/track + fabric panel over the hooks/rod, hiding jackets", done: false },
+        { title: "Build the centre unit — compartments for makeup, brushes and jewelry, replacing the small stand", done: false },
+        { title: "Build the under-table unit (right side) — for hats, bags and paper, using the dead space under the table", done: false },
+        { title: "Move shoes to the under-bed box — flat clear box for everyday/work shoes, floor rack comes out", done: false },
+      ];
+    }
+    const loft = db.projects.find((p) => p.title === "Loft reorganisation");
+    if (loft && loftId) loft.room = loftId;
+
+    const items = [
+      "Flat under-bed box, clear plastic — for shoes",
+      "1 lidded bin for jewelry & trinkets — top shelf",
+      "Tension rod or track + fabric panel — drop-down door, left side",
+      "Lumber/plywood + compartment inserts — centre built-in unit (makeup, brushes, jewelry)",
+      "Lumber/plywood + dividers — under-table unit (hats, bags, paper)",
+      "Labels for all bins",
+    ];
+    db.shopping.lists.push({
+      id: uid(),
+      title: "Kirsten's corner redesign",
+      colour: NOTE_COLOURS[db.shopping.lists.length % NOTE_COLOURS.length],
+      items: items.map((text) => ({ id: uid(), text, done: false })),
+    });
+
+    db.appliedSeeds.kirstensCornerRedesign = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
