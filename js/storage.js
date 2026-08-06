@@ -1154,6 +1154,18 @@ function applySeedAdditions(db) {
     db.appliedSeeds.declutterBedroomFollowups = true;
   }
 
+  // Reword the under-bed box shopping item (added August 2026) — not
+  // redundant after all: shoes are covered by a tub she already had, but
+  // she wants ~6 more of the same 32L tubs for other storage, after payday.
+  if (!db.appliedSeeds.underBedTubsRewording) {
+    const list = db.shopping.lists.find((l) => l.title === "Kirsten's corner redesign");
+    if (list) {
+      const item = list.items.find((i) => i.text === "Flat under-bed box, clear plastic — for shoes");
+      if (item) item.text = "Under-bed storage tubs, 32L — ~6 more, after payday";
+    }
+    db.appliedSeeds.underBedTubsRewording = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).

@@ -1169,12 +1169,16 @@ const TOILET_TRAINING_OVERRIDES = {
     "Dinner & water": { time: "18:00" },
     "Final Night Walk 4": { time: "22:00" },
   },
+  // Days 3-4 keep Day 2's tighter midday time too — she's happy sticking
+  // with it "for now" rather than reverting to the riskier base 13:00.
   3: {
     "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Midday Walk 2": { time: "12:00" },
     "Dinner & water": { time: "18:00" },
   },
   4: {
     "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Midday Walk 2": { time: "12:00" },
     "Dinner & water": { time: "18:00" },
   },
   // Days 5-14 — reshaped once she confirmed she has until the 18th rather
