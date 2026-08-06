@@ -1138,6 +1138,22 @@ function applySeedAdditions(db) {
     db.appliedSeeds.day1RevisedSchedule = true;
   }
 
+  // Two decluttering follow-ups for the Bedroom (added August 2026) —
+  // specific one-off decisions/tasks that came out of the corner
+  // decluttering pass, not part of the recurring organise-job list.
+  if (!db.appliedSeeds.declutterBedroomFollowups) {
+    const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
+    if (bedroomId) {
+      db.routines.push(
+        { id: uid(), title: "Decide: pocket watch — fix or replace battery", area: "cleaning", room: bedroomId,
+          assignedTo: "either", timeOfDay: "anytime", repeat: "once", intensity: "light", steps: [] },
+        { id: uid(), title: "Clean Jack's hip flask + decide where to store it", area: "cleaning", room: bedroomId,
+          assignedTo: "either", timeOfDay: "anytime", repeat: "once", intensity: "light", steps: [] },
+      );
+    }
+    db.appliedSeeds.declutterBedroomFollowups = true;
+  }
+
   // Real birthdates for both of you (added August 2026) — ages computed
   // live from these rather than the placeholder "31" the reference art
   // guessed for both of you (only actually correct for Kirsten).
