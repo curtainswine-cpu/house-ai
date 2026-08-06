@@ -1138,9 +1138,11 @@ function applySeedAdditions(db) {
     db.appliedSeeds.day1RevisedSchedule = true;
   }
 
-  // Two decluttering follow-ups for the Bedroom (added August 2026) —
-  // specific one-off decisions/tasks that came out of the corner
-  // decluttering pass, not part of the recurring organise-job list.
+  // Bedroom follow-ups from the decluttering pass (added August 2026) —
+  // specific one-off decisions/tasks, not part of the recurring
+  // organise-job list. Floor clutter (emergency poncho, the unidentified
+  // "Tagaban" item, anything else still loose) gets one catch-all task
+  // rather than chasing an individual home for each odd item.
   if (!db.appliedSeeds.declutterBedroomFollowups) {
     const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
     if (bedroomId) {
@@ -1149,6 +1151,8 @@ function applySeedAdditions(db) {
           assignedTo: "either", timeOfDay: "anytime", repeat: "once", intensity: "light", steps: [] },
         { id: uid(), title: "Clean Jack's hip flask + decide where to store it", area: "cleaning", room: bedroomId,
           assignedTo: "either", timeOfDay: "anytime", repeat: "once", intensity: "light", steps: [] },
+        { id: uid(), title: "Clear bedroom floor clutter (poncho, Tagaban, etc.)", area: "cleaning", room: bedroomId,
+          assignedTo: "either", timeOfDay: "anytime", repeat: "once", intensity: "medium", steps: [] },
       );
     }
     db.appliedSeeds.declutterBedroomFollowups = true;
