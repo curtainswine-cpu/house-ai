@@ -1101,19 +1101,53 @@ const TOILET_TRAINING_DAY_TIPS = {
      "• 1:15pm: sausage crumb inside, frozen Kong/chews, close and cover the crate.\n" +
      "• 6:30pm \"no fuss\" exit: open calmly, no cuddles/excitement, straight to water + dinner — keeps arousal low so they don't leak.\n" +
      "• Keep sausage pieces small to protect their weight. If they handle this stretch, they're officially halfway to the new routine.",
-  5: "Day 5 — earlier wakeup + real-world separation:\n" +
-     "• Morning walk shifts to 8:30am (see the schedule below) to start moving their body clock earlier.\n" +
-     "• The afternoon crate stretch naturally grows to 5.25 hours as a result.\n" +
-     "• Leave the flat completely for at least 2 hours during the crate block — a walk, a friend's, shopping. They need to practice being alone without your scent in the building, not just behind a closed door.",
-  6: "Day 6 — pushing toward the real return-to-work sequence:\n" +
-     "• Morning walk shifts earlier again, to 7:45am (alarm for 7:40) — working toward the eventual 6:15am goal.\n" +
-     "• Morning gap before Walk 2 stretches to 5.25 hours — keep them confined with you so they settle and nap.\n" +
-     "• By now they should walk into the crate on their own once they see the frozen Kongs come out at 1:15pm.\n" +
-     "• Start phasing out sausage for a simple, lazy pee — save the top rewards for poops and the 7:45am morning empty-out.",
-  7: "Day 7 — the final milestone: locking in the real workday rhythm:\n" +
+  // Days 5-14 (added August 2026) — reshaped once she confirmed she has
+  // until the 18th (annual leave, Jack's birthday the 20th) rather than
+  // an immediate return to work. Duration matters more than clock time
+  // for the dogs' actual training, so the wake time stays put at 9:30am
+  // through Day 11 while the crate stretch grows toward the real ~8hrs by
+  // pulling its START time earlier (end stays ~6pm, against the already-
+  // fixed dinner time) — only Days 12-13 shift to the real 6:15am wake,
+  // as a dress rehearsal once the duration itself is already proven.
+  5: "Day 5 — building crate endurance, your own pace:\n" +
+     "• Morning walk stays at 9:30am — no need to touch your own wake time yet, you've got until the 18th.\n" +
+     "• Midday Walk 2 moves to 12:30pm, straight into a 12:30pm–6pm crate block (5.5 hrs) — length matters more than the clock time right now.\n" +
+     "• Leave the flat completely for at least an hour during the crate block — they need to practice being alone without your scent in the building.",
+  6: "Day 6 — crate stretch continues:\n" +
+     "• Morning walk stays 9:30am.\n" +
+     "• Midday Walk 2 moves to 12:00pm, crate block grows to 6 hours (12:00pm–6pm).\n" +
+     "• By now they should walk into the crate on their own once they see the frozen Kongs come out.",
+  7: "Day 7 — past the old halfway point:\n" +
+     "• Morning walk stays 9:30am.\n" +
+     "• Midday Walk 2 moves to 11:30am, crate block grows to 6.5 hours.\n" +
+     "• Leave the flat for a longer stretch during the crate block — 2+ hours if you can.",
+  8: "Day 8 — three-quarters of the way to the real stretch:\n" +
+     "• Morning walk stays 9:30am.\n" +
+     "• Midday Walk 2 moves to 11:00am, crate block grows to 7 hours.\n" +
+     "• Start phasing out sausage for a simple, lazy pee — save the top rewards for poops and the morning empty-out.",
+  9: "Day 9 — nearly there:\n" +
+     "• Morning walk stays 9:30am.\n" +
+     "• Midday Walk 2 moves to 10:30am, crate block grows to 7.5 hours.",
+  10: "Day 10 — full duration reached, real clock time still to come:\n" +
+     "• Morning walk stays 9:30am.\n" +
+     "• Midday Walk 2 moves to 10:00am, crate block reaches the full 8 hours (10:00am–6pm) — the real length you'll both need, just not the real time of day yet.\n" +
+     "• Leave the flat for several hours during the crate block to make it as real as possible.",
+  11: "Day 11 — holding steady before the real dress rehearsal:\n" +
+     "• Same as Day 10 — morning walk 9:30am, crate 10:00am–6pm (8 hours).\n" +
+     "• No new pressure today, just confirming the 8-hour stretch is solid and repeatable before the wake time itself shifts.\n" +
+     "• Tomorrow the wake time finally moves — make sure you're set up for an early night.",
+  12: "Day 12 — the real wake time, for real this time:\n" +
      "• Real wakeup: alarm 6:10am, walk at 6:15am — the actual time your body needs to adjust to for going back to work.\n" +
-     "• Double morning routine: a second walk at 10:10am — this becomes Jack's future walk slot before he leaves for the office.\n" +
-     "• Full workday simulation: crate from 10:25am to 6:30pm, the real 8-hour stretch you'll both face at work. Try to leave the flat for several hours to make it real.",
+     "• Second walk at 10:10am — this becomes Jack's future walk slot before he leaves for the office.\n" +
+     "• Full workday simulation: crate from 10:25am to 6:30pm, the real 8-hour stretch — you've already proven the duration, now proving it at the real time of day.",
+  13: "Day 13 — target day: full dress rehearsal, real time and real length:\n" +
+     "• Same as yesterday — 6:15am wake, 10:10am second walk, crate 10:25am–6:30pm.\n" +
+     "• This is the day you were aiming for — if it goes well, you're genuinely ready for a real workday whenever you go back.\n" +
+     "• Leave the flat for the full stretch if you can, to make it as close to the real thing as possible.",
+  14: "Day 14 — stabilise, no new milestones:\n" +
+     "• Hold yesterday's pattern — 6:15am wake, 10:10am second walk, 10:25am–6:30pm crate.\n" +
+     "• No pressure to change anything today — just confirming it holds a second time before Jack's birthday tomorrow.\n" +
+     "• If anything slipped on Day 13, this is the day to quietly retry it, not push further.",
 };
 
 /* Day-specific overrides (time and/or label), applied on top of the base
@@ -1143,9 +1177,31 @@ const TOILET_TRAINING_OVERRIDES = {
     "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
     "Dinner & water": { time: "18:00" },
   },
-  5: { "Morning Walk 1": { time: "08:30" }, "Dinner & water": { time: "18:00" } },
-  6: { "Morning Walk 1": { time: "07:45" }, "Dinner & water": { time: "18:00" } },
-  7: {
+  // Days 5-14 — reshaped once she confirmed she has until the 18th rather
+  // than an immediate return to work (see TOILET_TRAINING_DAY_TIPS[5-14]
+  // for the full reasoning). Morning walk holds at 9:30am through Day 11;
+  // Midday Walk 2 creeps earlier each day purely to grow the crate
+  // stretch's duration (end stays ~6pm against the fixed dinner time) —
+  // only Days 12-13 move to the real 6:15am wake, once the duration
+  // itself is already proven at 8 hours.
+  5:  { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "12:30" }, "Dinner & water": { time: "18:00" } },
+  6:  { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "12:00" }, "Dinner & water": { time: "18:00" } },
+  7:  { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "11:30" }, "Dinner & water": { time: "18:00" } },
+  8:  { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "11:00" }, "Dinner & water": { time: "18:00" } },
+  9:  { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "10:30" }, "Dinner & water": { time: "18:00" } },
+  10: { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "10:00" }, "Dinner & water": { time: "18:00" } },
+  11: { "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" }, "Midday Walk 2": { time: "10:00" }, "Dinner & water": { time: "18:00" } },
+  12: {
+    "Morning Walk 1": { time: "06:15", duration: "10 min" },
+    "Midday Walk 2": { time: "10:10", label: "Pre-Work Walk 2 (Jack's future slot)" },
+    "Dinner & water": { time: "18:00" },
+  },
+  13: {
+    "Morning Walk 1": { time: "06:15", duration: "10 min" },
+    "Midday Walk 2": { time: "10:10", label: "Pre-Work Walk 2 (Jack's future slot)" },
+    "Dinner & water": { time: "18:00" },
+  },
+  14: {
     "Morning Walk 1": { time: "06:15", duration: "10 min" },
     "Midday Walk 2": { time: "10:10", label: "Pre-Work Walk 2 (Jack's future slot)" },
     "Dinner & water": { time: "18:00" },
