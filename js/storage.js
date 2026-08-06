@@ -1158,6 +1158,44 @@ function applySeedAdditions(db) {
     db.appliedSeeds.declutterBedroomFollowups = true;
   }
 
+  // Makeup desk / new-units / under-bed organising jobs (added August
+  // 2026) — the 16-job list worked out across the whole Kirsten's corner
+  // placement discussion, added once she confirmed the full picture.
+  if (!db.appliedSeeds.kirstensCornerOrganisingJobs) {
+    const bedroomId = (db.cleaningGame.rooms.find((r) => r.name === "Bedroom") || {}).id;
+    if (bedroomId) {
+      const anchor = todayKey();
+      const J = (title, repeat, intensity, extra) => Object.assign({
+        id: uid(), title, area: "cleaning", room: bedroomId, assignedTo: "either",
+        timeOfDay: "anytime", repeat, intensity, steps: [],
+      }, extra || {});
+
+      const jobs = [
+        // Makeup desk
+        J("Clean makeup desk", "weekly", "light", { repeatDay: 0 }),
+        J("Organise mirror-section top shelf", "monthly", "light", { anchorDate: anchor }),
+        J("Organise mirror-section middle shelf (brushes)", "monthly", "light", { anchorDate: anchor }),
+        J("Organise mirror-section bottom shelf", "monthly", "light", { anchorDate: anchor }),
+        J("Organise side-of-mirror section", "monthly", "light", { anchorDate: anchor }),
+        J("Organise makeup desk drawer 1", "monthly", "light", { anchorDate: anchor }),
+        J("Organise makeup desk drawer 2", "monthly", "light", { anchorDate: anchor }),
+        J("Organise makeup desk drawer 3", "monthly", "light", { anchorDate: anchor }),
+        J("Organise makeup desk drawer 4", "monthly", "light", { anchorDate: anchor }),
+        J("Organise makeup desk large drawer", "monthly", "medium", { anchorDate: anchor }),
+        J("Organise top-of-unit shelf", "monthly", "light", { anchorDate: anchor }),
+        // New build units
+        J("Organise Shelving Unit (display items)", "monthly", "medium", { anchorDate: anchor }),
+        J("Organise Work Storage Unit", "monthly", "medium", { anchorDate: anchor }),
+        J("Organise Under-Table Split Storage Unit (shelf side)", "monthly", "medium", { anchorDate: anchor }),
+        // Under-bed
+        J("Organise under-bed shoe tub", "monthly", "light", { anchorDate: anchor }),
+        J("Organise \"keepsakes for our house\" tub", "monthly", "light", { anchorDate: anchor }),
+      ];
+      jobs.forEach((r) => db.routines.push(r));
+    }
+    db.appliedSeeds.kirstensCornerOrganisingJobs = true;
+  }
+
   // Reword the under-bed box shopping item (added August 2026) — not
   // redundant after all: shoes are covered by a tub she already had, but
   // she wants ~6 more of the same 32L tubs for other storage, after payday.
