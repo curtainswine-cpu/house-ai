@@ -1083,9 +1083,12 @@ const TOILET_TRAINING_DAY_TIPS = {
      "• Be boring at the grass: stand still, no chat, no play.\n" +
      "• Reward the instant they go — sausage + enthusiastic praise.\n" +
      "• Accident → straight outside for a 2-minute reset walk.",
-  2: "Day 2 changes:\n" +
+  2: "Day 2 — revised after yesterday's two accidents:\n" +
+     "• Both accidents were Oddie's, and both fell in the GAPS between walks, not at a scheduled walk itself (every walk succeeded for both dogs) — noon (mid-way through the old 9:30am–1pm gap) and 10:45pm (1h45m after the old 9pm final walk, right when you were still up).\n" +
+     "• Midday Walk 2 moves to 12:00pm (was 1pm) — closes the gap where the noon accident happened. Oddie's margin here is tight — running ~15 min late may have contributed yesterday, so treat 12:00 as a real deadline, not just a rough target.\n" +
+     "• Final Night Walk 4 moves to 10:00pm (was 9pm) — closer to your actual bedtime, based on last night.\n" +
      "• Open one extra room (e.g. bedroom + hallway) to test if they'll hold it or sneak off.\n" +
-     "• Watch for \"the ask\" around 12:55pm / 6:25pm — staring, standing by the door, waking from a nap.\n" +
+     "• Watch for \"the ask\" around 11:55am / 9:25pm — staring, standing by the door, waking from a nap.\n" +
      "• Vary the reward — don't sausage a lazy dribble; save the big rewards for poops or a full first-morning-walk empty.",
   3: "Day 3 — teaching them to cope alone in their Safe Zone:\n" +
      "• 1:15pm: Safe Zone confinement — tiled/carpet-free area only, no sofa, no following you. Give each a safe chew or a frozen Kong stuffed with a tiny bit of wet food/plain yoghurt — keeps them busy the first 20 min and the licking soothes them to sleep. Close the door.\n" +
@@ -1122,11 +1125,30 @@ const TOILET_TRAINING_OVERRIDES = {
     "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
     "Dinner & water": { time: "18:00" },
   },
-  5: { "Morning Walk 1": { time: "08:30" } },
-  6: { "Morning Walk 1": { time: "07:45" } },
+  // Days 2-4 carry forward the Day 1 morning/dinner fix (confirmed working —
+  // zero repeat of Day 1's original accidents) since overrides don't
+  // inherit between days on their own. Day 5 takes over the morning time
+  // from here as the earlier-wakeup taper begins.
+  2: {
+    "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Midday Walk 2": { time: "12:00" },
+    "Dinner & water": { time: "18:00" },
+    "Final Night Walk 4": { time: "22:00" },
+  },
+  3: {
+    "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Dinner & water": { time: "18:00" },
+  },
+  4: {
+    "Morning Walk 1": { time: "09:30", label: "Morning Walk 1 (9:30–10:00am window)" },
+    "Dinner & water": { time: "18:00" },
+  },
+  5: { "Morning Walk 1": { time: "08:30" }, "Dinner & water": { time: "18:00" } },
+  6: { "Morning Walk 1": { time: "07:45" }, "Dinner & water": { time: "18:00" } },
   7: {
     "Morning Walk 1": { time: "06:15", duration: "10 min" },
     "Midday Walk 2": { time: "10:10", label: "Pre-Work Walk 2 (Jack's future slot)" },
+    "Dinner & water": { time: "18:00" },
   },
 };
 function toiletTrainingDayNumber(db) {
