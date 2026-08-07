@@ -1346,15 +1346,17 @@ function toiletOutcomeSummary(db, outcomes) {
    timeOverride: lets the ACTUAL time she did the walk be recorded
    (defaults to the scheduled slot's time if not given) — matters for
    spotting real patterns, since "went at 1:15" and "scheduled for 12:00"
-   are different data points. unknownTime marks it as a genuine "found it,
-   don't know when" entry rather than a guessed time. */
+   are different data points. timeRange {from, to} covers the "don't know
+   exactly, but it was sometime between X and Y" case — item.time is set
+   to the range's start (for sorting/retry-math), the range itself is
+   kept for display. */
 function markToiletWalk(db, itemId, outcomes, timeOverride) {
   const item = db.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
 
   if (timeOverride) {
-    item.unknownTime = !!timeOverride.unknownTime;
-    item.time = item.unknownTime ? "00:00" : (timeOverride.time || item.time);
+    item.timeRange = timeOverride.timeRange || null;
+    item.time = timeOverride.time || item.time;
   }
 
   if (item.status) {
@@ -1398,8 +1400,8 @@ function markToiletWalk(db, itemId, outcomes, timeOverride) {
   }
 
   const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
-  if (logEntry) { logEntry.kind = item.status; logEntry.outcomes = outcomes; logEntry.time = item.time; logEntry.unknownTime = item.unknownTime; }
-  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label, unknownTime: item.unknownTime });
+  if (logEntry) { logEntry.kind = item.status; logEntry.outcomes = outcomes; logEntry.time = item.time; logEntry.timeRange = item.timeRange; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label, timeRange: item.timeRange });
   saveDB(db);
 }
 
@@ -1427,12 +1429,12 @@ function markToiletEvent(db, itemId) {
    correct one already logged (reverses its old credit first, same
    pattern as markToiletWalk) instead of creating a duplicate.
 
-   unknownTime: for the common "found it after waking up" case, where the
-   real time it happened isn't known — sorts to the top of the day
-   (00:00 internally) rather than guessing, and displays as "Overnight
-   (time unknown)" instead of a fake precise clock time. */
-function logToiletTrip(db, { itemId, time, unknownTime, kind, outcomes }) {
-  const finalTime = unknownTime ? "00:00" : (time || nowTimeStr());
+   timeRange {from, to}: for the "don't know exactly, but sometime between
+   X and Y" case (e.g. between the last walk and finding it this
+   morning) — sorts by the range's start rather than a guessed single
+   time, and displays as the range instead of a fake precise clock time. */
+function logToiletTrip(db, { itemId, time, timeRange, kind, outcomes }) {
+  const finalTime = timeRange ? timeRange.from : (time || nowTimeStr());
   const label = kind === "accident" ? "Accident" : "Extra trip";
   let item = itemId ? db.toiletTraining.items.find((i) => i.id === itemId) : null;
 
@@ -1457,15 +1459,15 @@ function logToiletTrip(db, { itemId, time, unknownTime, kind, outcomes }) {
   }
 
   if (item) {
-    item.time = finalTime; item.status = kind; item.outcomes = outcomes; item.label = label; item.unknownTime = !!unknownTime;
+    item.time = finalTime; item.status = kind; item.outcomes = outcomes; item.label = label; item.timeRange = timeRange || null;
   } else {
-    item = { id: uid(), time: finalTime, label, type: "walk", duration: null, steps: [], status: kind, outcomes, adhoc: true, unknownTime: !!unknownTime };
+    item = { id: uid(), time: finalTime, label, type: "walk", duration: null, steps: [], status: kind, outcomes, adhoc: true, timeRange: timeRange || null };
     db.toiletTraining.items.push(item);
   }
 
   const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
-  if (logEntry) { logEntry.time = finalTime; logEntry.kind = kind; logEntry.outcomes = outcomes; logEntry.label = label; logEntry.unknownTime = !!unknownTime; }
-  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: finalTime, kind, outcomes, itemId: item.id, label, unknownTime: !!unknownTime });
+  if (logEntry) { logEntry.time = finalTime; logEntry.kind = kind; logEntry.outcomes = outcomes; logEntry.label = label; logEntry.timeRange = timeRange || null; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: finalTime, kind, outcomes, itemId: item.id, label, timeRange: timeRange || null });
   saveDB(db);
 }
 
@@ -1523,6 +1525,13 @@ function todaysToiletLog(db) {
   return db.toiletTraining.log.filter((e) => e.date === today).sort((a, b) => a.time.localeCompare(b.time));
 }
 
+/* "1:15 pm" normally, or "Between 12:00 pm–7:00 pm" when only a range is
+   known (e.g. found while asleep, or discovered between two walks). */
+function toiletTimeLabel(entry) {
+  if (entry.timeRange) return `Between ${formatTime12(entry.timeRange.from)}–${formatTime12(entry.timeRange.to)}`;
+  return formatTime12(entry.time);
+}
+
 function toiletTrainingItemHTML(db, item) {
   const stepsHTML = (item.steps || []).length
     ? `<ul class="steps">${item.steps.map((s) => `<li>${escapeHTML(s)}</li>`).join("")}</ul>` : "";
@@ -1549,7 +1558,7 @@ function toiletTrainingItemHTML(db, item) {
   return `
     <article class="card" style="flex-direction:column;align-items:stretch;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <strong>${item.unknownTime ? "Overnight (time unknown)" : formatTime12(item.time)} — ${escapeHTML(item.label)}</strong>
+        <strong>${toiletTimeLabel(item)} — ${escapeHTML(item.label)}</strong>
         ${item.duration ? `<span class="tag tag--time">${escapeHTML(item.duration)}</span>` : ""}
       </div>
       ${stepsHTML}
@@ -1628,7 +1637,7 @@ function renderToiletTraining(db) {
       if (!log.length) return "";
       const KIND_LABEL = { success: "✓", fail: "✗", accident: "🚨" };
       const rows = log.map((e) => `
-        <li>${e.unknownTime ? "Overnight (time unknown)" : formatTime12(e.time)} — ${KIND_LABEL[e.kind] || ""} ${escapeHTML(e.label)}${e.outcomes ? ` — ${escapeHTML(toiletOutcomeSummary(db, e.outcomes))}` : ""}</li>
+        <li>${toiletTimeLabel(e)} — ${KIND_LABEL[e.kind] || ""} ${escapeHTML(e.label)}${e.outcomes ? ` — ${escapeHTML(toiletOutcomeSummary(db, e.outcomes))}` : ""}</li>
       `).join("");
       return `
         <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">

@@ -573,32 +573,60 @@ function wireToiletOutcomeRows(idPrefix, outcomes) {
    buttons, since dogs can go independently of each other. Doubles as the
    edit flow for an already-logged walk (pre-fills the existing outcome so
    a wrong entry can be corrected rather than re-entered from scratch). */
+/* Shared "when did this actually happen" field for both toilet-log
+   modals — a single time by default, or a "not sure, give a range"
+   toggle for when she only knows it happened sometime between two
+   points (e.g. between the last walk and finding it this morning). */
+function toiletTimeFieldHTML(idPrefix, existing, fallbackTime) {
+  const hasRange = existing && existing.timeRange;
+  const singleTime = hasRange ? "" : ((existing && existing.time) || fallbackTime);
+  return `
+    <div class="field">
+      <label for="${idPrefix}Time">When did this actually happen? <span style="color:var(--muted);font-weight:400">(for spotting real patterns, not just the scheduled slot)</span></label>
+      <input id="${idPrefix}Time" type="time" value="${singleTime}" ${hasRange ? "disabled" : ""} />
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+        <input type="checkbox" id="${idPrefix}RangeToggle" ${hasRange ? "checked" : ""} />
+        Not sure of the exact time — give a range instead
+      </label>
+      <div class="tvar-row" id="${idPrefix}RangeRow" style="margin-top:6px" ${hasRange ? "" : "hidden"}>
+        <span class="tvar__label">Between</span>
+        <input id="${idPrefix}From" type="time" value="${hasRange ? existing.timeRange.from : fallbackTime}" />
+        <span class="tvar__label">and</span>
+        <input id="${idPrefix}To" type="time" value="${hasRange ? existing.timeRange.to : fallbackTime}" />
+      </div>
+    </div>`;
+}
+function wireToiletTimeField(idPrefix) {
+  document.getElementById(`${idPrefix}RangeToggle`).onchange = (e) => {
+    document.getElementById(`${idPrefix}Time`).disabled = e.target.checked;
+    document.getElementById(`${idPrefix}RangeRow`).hidden = !e.target.checked;
+  };
+}
+function readToiletTimeField(idPrefix, fallbackTime) {
+  if (document.getElementById(`${idPrefix}RangeToggle`).checked) {
+    const from = document.getElementById(`${idPrefix}From`).value || fallbackTime;
+    const to = document.getElementById(`${idPrefix}To`).value || fallbackTime;
+    return { time: from, timeRange: { from, to } };
+  }
+  return { time: document.getElementById(`${idPrefix}Time`).value || fallbackTime, timeRange: null };
+}
+
 function openToiletLogModal(itemId) {
   const item = DB.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
   const isEdit = !!item.status;
   openModal(`📝 ${item.label}${isEdit ? " — edit" : ""}`, `
-    <div class="field">
-      <label for="ttLogTime">When did this actually happen? <span style="color:var(--muted);font-weight:400">(for spotting real patterns, not just the scheduled slot)</span></label>
-      <input id="ttLogTime" type="time" value="${item.unknownTime ? "" : item.time}" ${item.unknownTime ? "disabled" : ""} />
-      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
-        <input type="checkbox" id="ttLogUnknownTime" ${item.unknownTime ? "checked" : ""} />
-        Don't know the exact time (found it after waking/while asleep)
-      </label>
-    </div>
+    ${toiletTimeFieldHTML("ttLog", item, item.time)}
     ${toiletOutcomeRowsHTML("ttLogDog", item.outcomes)}
     <button class="btn btn--primary btn--block" id="ttLogSave">${isEdit ? "Save correction" : "Save"}</button>
   `);
   const outcomes = Object.assign({}, item.outcomes);
   DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
   wireToiletOutcomeRows("ttLogDog", outcomes);
-  document.getElementById("ttLogUnknownTime").onchange = (e) => {
-    document.getElementById("ttLogTime").disabled = e.target.checked;
-  };
+  wireToiletTimeField("ttLog");
   document.getElementById("ttLogSave").onclick = () => {
-    const unknownTime = document.getElementById("ttLogUnknownTime").checked;
-    const time = document.getElementById("ttLogTime").value || item.time;
-    markToiletWalk(DB, itemId, outcomes, { time, unknownTime });
+    const { time, timeRange } = readToiletTimeField("ttLog", item.time);
+    markToiletWalk(DB, itemId, outcomes, { time, timeRange });
     closeModal();
     render();
   };
@@ -611,14 +639,7 @@ function openToiletLogModal(itemId) {
 function openToiletTripModal(existingItemId) {
   const existing = existingItemId ? DB.toiletTraining.items.find((i) => i.id === existingItemId) : null;
   openModal(existing ? "✎ Edit toilet trip" : "➕ Log a toilet trip", `
-    <div class="field">
-      <label for="ttTripTime">When?</label>
-      <input id="ttTripTime" type="time" value="${existing && !existing.unknownTime ? existing.time : nowTimeStr()}" ${existing && existing.unknownTime ? "disabled" : ""} />
-      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
-        <input type="checkbox" id="ttTripUnknownTime" ${existing && existing.unknownTime ? "checked" : ""} />
-        Don't know the exact time (found it after waking/while asleep)
-      </label>
-    </div>
+    ${toiletTimeFieldHTML("ttTrip", existing, nowTimeStr())}
     <div class="field">
       <label>Right place, or an accident?</label>
       <div class="chip-row" id="ttTripKind">
@@ -638,13 +659,10 @@ function openToiletTripModal(existingItemId) {
     kind = b.dataset.value; pressOne("ttTripKind", b);
   };
   wireToiletOutcomeRows("ttTripDog", outcomes);
-  document.getElementById("ttTripUnknownTime").onchange = (e) => {
-    document.getElementById("ttTripTime").disabled = e.target.checked;
-  };
+  wireToiletTimeField("ttTrip");
   document.getElementById("ttTripSave").onclick = () => {
-    const unknownTime = document.getElementById("ttTripUnknownTime").checked;
-    const time = document.getElementById("ttTripTime").value || nowTimeStr();
-    logToiletTrip(DB, { itemId: existingItemId || null, time, unknownTime, kind, outcomes });
+    const { time, timeRange } = readToiletTimeField("ttTrip", nowTimeStr());
+    logToiletTrip(DB, { itemId: existingItemId || null, time, timeRange, kind, outcomes });
     closeModal();
     render();
   };
