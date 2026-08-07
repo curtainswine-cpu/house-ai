@@ -578,14 +578,27 @@ function openToiletLogModal(itemId) {
   if (!item) return;
   const isEdit = !!item.status;
   openModal(`📝 ${item.label}${isEdit ? " — edit" : ""}`, `
+    <div class="field">
+      <label for="ttLogTime">When did this actually happen? <span style="color:var(--muted);font-weight:400">(for spotting real patterns, not just the scheduled slot)</span></label>
+      <input id="ttLogTime" type="time" value="${item.unknownTime ? "" : item.time}" ${item.unknownTime ? "disabled" : ""} />
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+        <input type="checkbox" id="ttLogUnknownTime" ${item.unknownTime ? "checked" : ""} />
+        Don't know the exact time (found it after waking/while asleep)
+      </label>
+    </div>
     ${toiletOutcomeRowsHTML("ttLogDog", item.outcomes)}
     <button class="btn btn--primary btn--block" id="ttLogSave">${isEdit ? "Save correction" : "Save"}</button>
   `);
   const outcomes = Object.assign({}, item.outcomes);
   DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
   wireToiletOutcomeRows("ttLogDog", outcomes);
+  document.getElementById("ttLogUnknownTime").onchange = (e) => {
+    document.getElementById("ttLogTime").disabled = e.target.checked;
+  };
   document.getElementById("ttLogSave").onclick = () => {
-    markToiletWalk(DB, itemId, outcomes);
+    const unknownTime = document.getElementById("ttLogUnknownTime").checked;
+    const time = document.getElementById("ttLogTime").value || item.time;
+    markToiletWalk(DB, itemId, outcomes, { time, unknownTime });
     closeModal();
     render();
   };
@@ -600,7 +613,11 @@ function openToiletTripModal(existingItemId) {
   openModal(existing ? "✎ Edit toilet trip" : "➕ Log a toilet trip", `
     <div class="field">
       <label for="ttTripTime">When?</label>
-      <input id="ttTripTime" type="time" value="${existing ? existing.time : nowTimeStr()}" />
+      <input id="ttTripTime" type="time" value="${existing && !existing.unknownTime ? existing.time : nowTimeStr()}" ${existing && existing.unknownTime ? "disabled" : ""} />
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+        <input type="checkbox" id="ttTripUnknownTime" ${existing && existing.unknownTime ? "checked" : ""} />
+        Don't know the exact time (found it after waking/while asleep)
+      </label>
     </div>
     <div class="field">
       <label>Right place, or an accident?</label>
@@ -621,9 +638,13 @@ function openToiletTripModal(existingItemId) {
     kind = b.dataset.value; pressOne("ttTripKind", b);
   };
   wireToiletOutcomeRows("ttTripDog", outcomes);
+  document.getElementById("ttTripUnknownTime").onchange = (e) => {
+    document.getElementById("ttTripTime").disabled = e.target.checked;
+  };
   document.getElementById("ttTripSave").onclick = () => {
+    const unknownTime = document.getElementById("ttTripUnknownTime").checked;
     const time = document.getElementById("ttTripTime").value || nowTimeStr();
-    logToiletTrip(DB, { itemId: existingItemId || null, time, kind, outcomes });
+    logToiletTrip(DB, { itemId: existingItemId || null, time, unknownTime, kind, outcomes });
     closeModal();
     render();
   };

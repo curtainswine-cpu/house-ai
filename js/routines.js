@@ -1341,10 +1341,21 @@ function toiletOutcomeSummary(db, outcomes) {
    Also doubles as the correction path: if this walk was already marked
    (item.status set), whatever was credited for the OLD outcome is
    reversed first, so fixing a mis-entered walk corrects the record
-   instead of stacking extra XP on top. Safe to call repeatedly. */
-function markToiletWalk(db, itemId, outcomes) {
+   instead of stacking extra XP on top. Safe to call repeatedly.
+
+   timeOverride: lets the ACTUAL time she did the walk be recorded
+   (defaults to the scheduled slot's time if not given) — matters for
+   spotting real patterns, since "went at 1:15" and "scheduled for 12:00"
+   are different data points. unknownTime marks it as a genuine "found it,
+   don't know when" entry rather than a guessed time. */
+function markToiletWalk(db, itemId, outcomes, timeOverride) {
   const item = db.toiletTraining.items.find((i) => i.id === itemId);
   if (!item) return;
+
+  if (timeOverride) {
+    item.unknownTime = !!timeOverride.unknownTime;
+    item.time = item.unknownTime ? "00:00" : (timeOverride.time || item.time);
+  }
 
   if (item.status) {
     db.pets.forEach((p) => {
@@ -1387,8 +1398,8 @@ function markToiletWalk(db, itemId, outcomes) {
   }
 
   const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
-  if (logEntry) { logEntry.kind = item.status; logEntry.outcomes = outcomes; }
-  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label });
+  if (logEntry) { logEntry.kind = item.status; logEntry.outcomes = outcomes; logEntry.time = item.time; logEntry.unknownTime = item.unknownTime; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: item.time, kind: item.status, outcomes, itemId: item.id, label: item.label, unknownTime: item.unknownTime });
   saveDB(db);
 }
 
@@ -1414,9 +1425,14 @@ function markToiletEvent(db, itemId) {
    the bottom) — marked `adhoc: true` so it's fully deletable rather than
    resettable-to-pending like a scheduled slot. Pass an existing itemId to
    correct one already logged (reverses its old credit first, same
-   pattern as markToiletWalk) instead of creating a duplicate. */
-function logToiletTrip(db, { itemId, time, kind, outcomes }) {
-  const finalTime = time || nowTimeStr();
+   pattern as markToiletWalk) instead of creating a duplicate.
+
+   unknownTime: for the common "found it after waking up" case, where the
+   real time it happened isn't known — sorts to the top of the day
+   (00:00 internally) rather than guessing, and displays as "Overnight
+   (time unknown)" instead of a fake precise clock time. */
+function logToiletTrip(db, { itemId, time, unknownTime, kind, outcomes }) {
+  const finalTime = unknownTime ? "00:00" : (time || nowTimeStr());
   const label = kind === "accident" ? "Accident" : "Extra trip";
   let item = itemId ? db.toiletTraining.items.find((i) => i.id === itemId) : null;
 
@@ -1441,15 +1457,15 @@ function logToiletTrip(db, { itemId, time, kind, outcomes }) {
   }
 
   if (item) {
-    item.time = finalTime; item.status = kind; item.outcomes = outcomes; item.label = label;
+    item.time = finalTime; item.status = kind; item.outcomes = outcomes; item.label = label; item.unknownTime = !!unknownTime;
   } else {
-    item = { id: uid(), time: finalTime, label, type: "walk", duration: null, steps: [], status: kind, outcomes, adhoc: true };
+    item = { id: uid(), time: finalTime, label, type: "walk", duration: null, steps: [], status: kind, outcomes, adhoc: true, unknownTime: !!unknownTime };
     db.toiletTraining.items.push(item);
   }
 
   const logEntry = db.toiletTraining.log.find((e) => e.itemId === item.id);
-  if (logEntry) { logEntry.time = finalTime; logEntry.kind = kind; logEntry.outcomes = outcomes; logEntry.label = label; }
-  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: finalTime, kind, outcomes, itemId: item.id, label });
+  if (logEntry) { logEntry.time = finalTime; logEntry.kind = kind; logEntry.outcomes = outcomes; logEntry.label = label; logEntry.unknownTime = !!unknownTime; }
+  else db.toiletTraining.log.push({ id: uid(), date: todayKey(), time: finalTime, kind, outcomes, itemId: item.id, label, unknownTime: !!unknownTime });
   saveDB(db);
 }
 
@@ -1533,7 +1549,7 @@ function toiletTrainingItemHTML(db, item) {
   return `
     <article class="card" style="flex-direction:column;align-items:stretch;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <strong>${formatTime12(item.time)} — ${escapeHTML(item.label)}</strong>
+        <strong>${item.unknownTime ? "Overnight (time unknown)" : formatTime12(item.time)} — ${escapeHTML(item.label)}</strong>
         ${item.duration ? `<span class="tag tag--time">${escapeHTML(item.duration)}</span>` : ""}
       </div>
       ${stepsHTML}
@@ -1612,7 +1628,7 @@ function renderToiletTraining(db) {
       if (!log.length) return "";
       const KIND_LABEL = { success: "✓", fail: "✗", accident: "🚨" };
       const rows = log.map((e) => `
-        <li>${formatTime12(e.time)} — ${KIND_LABEL[e.kind] || ""} ${escapeHTML(e.label)}${e.outcomes ? ` — ${escapeHTML(toiletOutcomeSummary(db, e.outcomes))}` : ""}</li>
+        <li>${e.unknownTime ? "Overnight (time unknown)" : formatTime12(e.time)} — ${KIND_LABEL[e.kind] || ""} ${escapeHTML(e.label)}${e.outcomes ? ` — ${escapeHTML(toiletOutcomeSummary(db, e.outcomes))}` : ""}</li>
       `).join("");
       return `
         <div class="card" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:14px">
