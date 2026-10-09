@@ -225,19 +225,6 @@ function defaultData() {
       },
     },
 
-    // Toilet training — one shared schedule for both dogs together (not
-    // per-dog), regenerated fresh each day from TOILET_TRAINING_SCHEDULE.
-    // A failed walk auto-adds a retry 20 minutes later rather than just
-    // marking it failed and moving on. startDate anchors an auto-advancing
-    // day counter (see toiletTrainingDayNumber) so "today's tips" always
-    // matches the actual day of the plan without needing manual correction
-    // each time she pastes the next day's guidance.
-    // log[] records EVERY toileting outcome chronologically (scheduled walks
-    // AND ad-hoc trips/accidents logged any time of day) — separate from
-    // items[] (today's schedule display) so a full history survives each
-    // day's regeneration, for spotting real habits day to day.
-    toiletTraining: { lastGeneratedDate: null, items: [], notes: "", startDate: null, log: [] },
-
     // Fridge/Freezer — shared stock with use-by dates (the Food page).
     food: {
       items: [],         // {id, name, where:"fridge"|"freezer", useBy:"YYYY-MM-DD"|null, added, note?}
@@ -317,10 +304,6 @@ function normalize(db) {
     if (!db.petCare.fleaWorm[p.id]) db.petCare.fleaWorm[p.id] = { lastDone: null };
     if (!db.petCare.claws[p.id]) db.petCare.claws[p.id] = { done: {}, cyclesCompleted: 0 };
   });
-  if (!db.toiletTraining) db.toiletTraining = { lastGeneratedDate: null, items: [] };
-  if (typeof db.toiletTraining.notes !== "string") db.toiletTraining.notes = "";
-  if (!db.toiletTraining.startDate) db.toiletTraining.startDate = todayKey();
-  if (!Array.isArray(db.toiletTraining.log)) db.toiletTraining.log = [];
   db.people.forEach((p) => { if (typeof p.baseLevel !== "number") p.baseLevel = 0; });
   if (!db.appliedSeeds) db.appliedSeeds = {};
   // Friendly migration of the old seed data
@@ -865,19 +848,6 @@ function applySeedAdditions(db) {
     db.appliedSeeds.petFlavour = true;
   }
 
-  // Correction (added August 2026): the day-specific plan tips were
-  // originally written straight into the freeform notes field, one
-  // overwrite per message — but training actually starts today, not on
-  // whatever message count we were at. Replaced with an auto-advancing
-  // day counter (see toiletTrainingDayNumber/TOILET_TRAINING_DAY_TIPS in
-  // routines.js) so this can't drift out of sync again. Clears whichever
-  // day's guessed text ended up in notes and anchors day 1 to today.
-  if (!db.appliedSeeds.toiletTrainingDayCounterFix) {
-    db.toiletTraining.notes = "";
-    db.toiletTraining.startDate = todayKey();
-    db.appliedSeeds.toiletTrainingDayCounterFix = true;
-  }
-
   // New bedding order (added August 2026) — old mattress needs disposing
   // of, plain pillowcases and sheets needed to go with the new bedding
   // sets. "Sort bedding into sets for under-bed storage" already exists
@@ -898,40 +868,6 @@ function applySeedAdditions(db) {
       });
     }
     db.appliedSeeds.newBeddingOrder = true;
-  }
-
-  // Toilet training pushed back a day (added August 2026) — missed the
-  // planned start due to an allergy flare-up, so Day 1 anchors to
-  // tomorrow instead. Self-service equivalent: the "Push start back a
-  // day" button on the Pets page (postponeToiletTrainingStart in
-  // routines.js) for next time this happens.
-  if (!db.appliedSeeds.toiletTrainingPostponeAug5) {
-    db.toiletTraining.startDate = tomorrowKey();
-    db.toiletTraining.items = [];
-    db.toiletTraining.lastGeneratedDate = null;
-    db.appliedSeeds.toiletTrainingPostponeAug5 = true;
-  }
-
-  // Added a 12:15 walk to the warm-up day (added August 2026) — that's
-  // her actual water-bowl-down moment, so the later Afternoon/Early
-  // Evening walk steps shift down a slot (water up, then just a plain
-  // business trip) to match. Patches today's already-generated items
-  // directly rather than regenerating, so anything already ticked off
-  // stays ticked.
-  if (!db.appliedSeeds.toiletTrainingWarmup1215) {
-    const items = db.toiletTraining.items || [];
-    if (!items.find((i) => i.time === "12:15" && i.label === "Midday Walk")) {
-      items.push({
-        id: "warmup-1215", time: "12:15", label: "Midday Walk", type: "walk",
-        duration: "5–7 min", status: null,
-        steps: ["Straight outside — no lounging, no phones", "Stand still at the grass, be boring", "Reward the instant they go — sausage + praise", "Water bowl down the moment you're back inside"],
-      });
-    }
-    const afternoon = items.find((i) => i.label === "Afternoon Walk");
-    if (afternoon) afternoon.steps = ["Boring, business-only trip", "Reward on the grass", "Water bowl lifted up the moment you're back inside"];
-    const earlyEvening = items.find((i) => i.label === "Early Evening Walk");
-    if (earlyEvening) earlyEvening.steps = ["Boring, business-only trip", "Reward on the grass"];
-    db.appliedSeeds.toiletTrainingWarmup1215 = true;
   }
 
   // Bedroom organising jobs (added August 2026) — recurring cleaning/
@@ -1119,23 +1055,6 @@ function applySeedAdditions(db) {
       });
     }
     db.appliedSeeds.kirstensCornerRealBuildPlans = true;
-  }
-
-  // Day 1 toilet training schedule revised (added August 2026) — after
-  // Oddie's morning poo timing and Effie's morning/evening accidents,
-  // Morning Walk 1 moves to a 9:30-10:00am window and dinner moves to
-  // 6pm. Added as a proper TOILET_TRAINING_OVERRIDES[1] entry so it
-  // applies automatically to any future regeneration, but today's Day 1
-  // items were already generated under the old un-overridden times —
-  // patch them directly here too, and only if she hasn't already logged
-  // them, so nothing already ticked today gets disturbed.
-  if (!db.appliedSeeds.day1RevisedSchedule) {
-    const items = db.toiletTraining.items || [];
-    const morning = items.find((i) => i.label === "Morning Walk 1" && i.status === null);
-    if (morning) { morning.time = "09:30"; morning.label = "Morning Walk 1 (9:30–10:00am window)"; }
-    const dinner = items.find((i) => i.label === "Dinner & water" && i.status === null);
-    if (dinner) dinner.time = "18:00";
-    db.appliedSeeds.day1RevisedSchedule = true;
   }
 
   // Bedroom follow-ups from the decluttering pass (added August 2026) —

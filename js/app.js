@@ -122,7 +122,6 @@ function render() {
   renderShiftBanner(DB);
   renderCharacterPanel(DB);  // Home hero: character + level + Health/Hygiene/Appearance
   renderPetsPage(DB);        // Pets: Effie & Oddie's own profiles
-  renderToiletTraining(DB);  // Pets: shared toilet-training schedule
   renderTodayCalendar(DB);
   renderFullCalendar(DB);
   renderHomeNav(DB);
@@ -544,137 +543,6 @@ function openProjectDetailModal(projectId) {
   });
 }
 
-/* ---------- Toilet training: per-dog wee/poo outcome pickers ---------- */
-const TOILET_OUTCOME_OPTIONS = [["", "Didn't go"], ["wee", "Wee"], ["poo", "Poo"], ["both", "Both"]];
-function toiletOutcomeRowsHTML(idPrefix, existingOutcomes) {
-  return DB.pets.map((p) => {
-    const current = (existingOutcomes && existingOutcomes[p.id]) || "";
-    return `
-    <div class="field">
-      <label>${escapeHTML(p.name)}</label>
-      <div class="chip-row" id="${idPrefix}-${p.id}">
-        ${TOILET_OUTCOME_OPTIONS.map(([val, label]) =>
-          `<button class="chip" data-value="${val}" aria-pressed="${val === current}">${label}</button>`).join("")}
-      </div>
-    </div>`;
-  }).join("");
-}
-function wireToiletOutcomeRows(idPrefix, outcomes) {
-  DB.pets.forEach((p) => {
-    document.getElementById(`${idPrefix}-${p.id}`).onclick = (e) => {
-      const b = e.target.closest("[data-value]"); if (!b) return;
-      outcomes[p.id] = b.dataset.value || null;
-      pressOne(`${idPrefix}-${p.id}`, b);
-    };
-  });
-}
-
-/* Log a scheduled walk's outcome — replaces the old blanket success/fail
-   buttons, since dogs can go independently of each other. Doubles as the
-   edit flow for an already-logged walk (pre-fills the existing outcome so
-   a wrong entry can be corrected rather than re-entered from scratch). */
-/* Shared "when did this actually happen" field for both toilet-log
-   modals — a single time by default, or a "not sure, give a range"
-   toggle for when she only knows it happened sometime between two
-   points (e.g. between the last walk and finding it this morning). */
-function toiletTimeFieldHTML(idPrefix, existing, fallbackTime) {
-  const hasRange = existing && existing.timeRange;
-  const singleTime = hasRange ? "" : ((existing && existing.time) || fallbackTime);
-  return `
-    <div class="field">
-      <label for="${idPrefix}Time">When did this actually happen? <span style="color:var(--muted);font-weight:400">(for spotting real patterns, not just the scheduled slot)</span></label>
-      <input id="${idPrefix}Time" type="time" value="${singleTime}" ${hasRange ? "disabled" : ""} />
-      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
-        <input type="checkbox" id="${idPrefix}RangeToggle" ${hasRange ? "checked" : ""} />
-        Not sure of the exact time — give a range instead
-      </label>
-      <div class="tvar-row" id="${idPrefix}RangeRow" style="margin-top:6px" ${hasRange ? "" : "hidden"}>
-        <span class="tvar__label">Between</span>
-        <input id="${idPrefix}From" type="time" value="${hasRange ? existing.timeRange.from : fallbackTime}" />
-        <span class="tvar__label">and</span>
-        <input id="${idPrefix}To" type="time" value="${hasRange ? existing.timeRange.to : fallbackTime}" />
-      </div>
-    </div>`;
-}
-function wireToiletTimeField(idPrefix) {
-  document.getElementById(`${idPrefix}RangeToggle`).onchange = (e) => {
-    document.getElementById(`${idPrefix}Time`).disabled = e.target.checked;
-    document.getElementById(`${idPrefix}RangeRow`).hidden = !e.target.checked;
-  };
-}
-function readToiletTimeField(idPrefix, fallbackTime) {
-  if (document.getElementById(`${idPrefix}RangeToggle`).checked) {
-    const from = document.getElementById(`${idPrefix}From`).value || fallbackTime;
-    const to = document.getElementById(`${idPrefix}To`).value || fallbackTime;
-    return { time: from, timeRange: { from, to } };
-  }
-  return { time: document.getElementById(`${idPrefix}Time`).value || fallbackTime, timeRange: null };
-}
-
-function openToiletLogModal(itemId) {
-  const item = DB.toiletTraining.items.find((i) => i.id === itemId);
-  if (!item) return;
-  const isEdit = !!item.status;
-  openModal(`📝 ${item.label}${isEdit ? " — edit" : ""}`, `
-    ${toiletTimeFieldHTML("ttLog", item, item.time)}
-    ${toiletOutcomeRowsHTML("ttLogDog", item.outcomes)}
-    <button class="btn btn--primary btn--block" id="ttLogSave">${isEdit ? "Save correction" : "Save"}</button>
-  `);
-  const outcomes = Object.assign({}, item.outcomes);
-  DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
-  wireToiletOutcomeRows("ttLogDog", outcomes);
-  wireToiletTimeField("ttLog");
-  document.getElementById("ttLogSave").onclick = () => {
-    const { time, timeRange } = readToiletTimeField("ttLog", item.time);
-    markToiletWalk(DB, itemId, outcomes, { time, timeRange });
-    closeModal();
-    render();
-  };
-}
-
-/* Ad-hoc trip — not tied to a scheduled slot: a proactive extra walk, or
-   an accident, logged with a real time (defaults to now, editable).
-   Pass an existing item's id to correct one already logged instead of
-   creating a duplicate — same modal, pre-filled. */
-function openToiletTripModal(existingItemId) {
-  const existing = existingItemId ? DB.toiletTraining.items.find((i) => i.id === existingItemId) : null;
-  openModal(existing ? "✎ Edit toilet trip" : "➕ Log a toilet trip", `
-    ${toiletTimeFieldHTML("ttTrip", existing, nowTimeStr())}
-    <div class="field">
-      <label>Right place, or an accident?</label>
-      <div class="chip-row" id="ttTripKind">
-        <button class="chip" data-value="success" aria-pressed="${!existing || existing.status !== "accident"}">✓ Success</button>
-        <button class="chip" data-value="accident" aria-pressed="${!!(existing && existing.status === "accident")}">✗ Accident</button>
-      </div>
-    </div>
-    ${toiletOutcomeRowsHTML("ttTripDog", existing && existing.outcomes)}
-    <button class="btn btn--primary btn--block" id="ttTripSave">${existing ? "Save correction" : "Save"}</button>
-    ${existing ? `<button class="btn btn--danger btn--block" id="ttTripDelete">Delete this entry</button>` : ""}
-  `);
-  let kind = existing ? existing.status : "success";
-  const outcomes = Object.assign({}, existing && existing.outcomes);
-  DB.pets.forEach((p) => { if (!(p.id in outcomes)) outcomes[p.id] = null; });
-  document.getElementById("ttTripKind").onclick = (e) => {
-    const b = e.target.closest("[data-value]"); if (!b) return;
-    kind = b.dataset.value; pressOne("ttTripKind", b);
-  };
-  wireToiletOutcomeRows("ttTripDog", outcomes);
-  wireToiletTimeField("ttTrip");
-  document.getElementById("ttTripSave").onclick = () => {
-    const { time, timeRange } = readToiletTimeField("ttTrip", nowTimeStr());
-    logToiletTrip(DB, { itemId: existingItemId || null, time, timeRange, kind, outcomes });
-    closeModal();
-    render();
-  };
-  if (existing) {
-    document.getElementById("ttTripDelete").onclick = () => {
-      deleteToiletWalk(DB, existingItemId);
-      closeModal();
-      render();
-    };
-  }
-}
-
 /* ---------- Suggested routines picker ---------- */
 function openSuggestionsModal() {
   const have = new Set(DB.routines.map((r) => r.title));
@@ -923,17 +791,6 @@ function wireEvents() {
       const [petId, clawKey] = petClaw.dataset.petClaw.split("|");
       toggleClaw(DB, petId, clawKey); render(); return;
     }
-    const ttMark = e.target.closest("[data-tt-mark]");
-    if (ttMark) { markToiletEvent(DB, ttMark.dataset.ttMark); render(); return; }
-    const ttLog = e.target.closest("[data-tt-log]");
-    if (ttLog) { openToiletLogModal(ttLog.dataset.ttLog); return; }
-    if (e.target.closest("[data-tt-log-trip]")) { openToiletTripModal(); return; }
-    const ttTripEdit = e.target.closest("[data-tt-trip-edit]");
-    if (ttTripEdit) { openToiletTripModal(ttTripEdit.dataset.ttTripEdit); return; }
-    const ttDelete = e.target.closest("[data-tt-delete]");
-    if (ttDelete) { deleteToiletWalk(DB, ttDelete.dataset.ttDelete); render(); return; }
-    if (e.target.closest("[data-tt-reset]")) { resetToiletTraining(DB); render(); return; }
-    if (e.target.closest("[data-tt-postpone]")) { postponeToiletTrainingStart(DB); render(); return; }
 
     // Cleaning: log a full room clean
     const logClean = e.target.closest("[data-log-full-clean]");
