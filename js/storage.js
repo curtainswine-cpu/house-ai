@@ -1137,6 +1137,25 @@ function applySeedAdditions(db) {
     if (jack) jack.birthdate = "1997-08-20";
     db.appliedSeeds.humanBirthdates = true;
   }
+
+  // Cleaning reset (added October 2026) — she asked to start the cleaning
+  // side again with blank pages, and picked EXACTLY: room projects + the
+  // laundry and waste trackers. Room jobs, room notes/status, the house
+  // layout, XP and shopping lists were deliberately NOT ticked, so they're
+  // untouched here. Kept last in this function so no earlier seed can
+  // recreate projects/loads after the wipe on a fresh install.
+  // Laundry isn't blanked entirely: washing is caught up but 4 clean loads
+  // still need putting away, so those 4 sit at the "folded" stage.
+  // carCapacity is a setting rather than tracked state, so it stays.
+  if (!db.appliedSeeds.cleaningTrackersReset2026Oct) {
+    db.projects = db.projects.filter((p) => !p.room);
+    db.laundry.loads = Array.from({ length: 4 }, () => ({ id: uid(), type: "Mixed wash", stage: "folded", createdDate: todayKey() }));
+    db.laundry.dailyWear = { kirsten: 0, jack: 0 };
+    db.laundry.lastDailyWearDate = null;
+    db.waste.outsideBagsWaiting = 0;
+    db.waste.lastTipRun = null;
+    db.appliedSeeds.cleaningTrackersReset2026Oct = true;
+  }
 }
 
 /* Load the whole database. Falls back to defaults on first run. */
